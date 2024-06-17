@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 #define uint unsigned int
+#define MAX(a, b) ((a) > (b) ? (a) : (b))
 
 //------------------------------------------------------------------------------
 // computa uma resposta para a instância (n,c) do problema das n rainhas 
@@ -51,18 +52,14 @@ static int rainhas_bt_(uint n, uint *cols, uint *diags1, uint *diags2, uint *mat
 
 unsigned int *rainhas_bt(unsigned int n, unsigned int k, casa *c, unsigned int *r) {
     uint *cols = calloc(n, (sizeof (uint)));
-    memset(cols, 0, n*(sizeof (uint)));
 
     uint *mat  = calloc(n*n, (sizeof (uint)));
-    memset(mat, 0, n*n*(sizeof (uint)));
     for (uint i = 0; i < k; i++)
         mat[(c[i].linha-1)*n + c[i].coluna-1] = 1;
 
     uint *diags1  = calloc(2*n, (sizeof (uint)));
-    memset(diags1, 0, 2*n*(sizeof (uint)));
 
     uint *diags2  = calloc(2*n, (sizeof (uint)));
-    memset(diags2, 0, 2*n*(sizeof (uint)));
     
 #ifdef DEBUG
     for (unsigned int i=0; i<n; i++) {
@@ -92,6 +89,17 @@ unsigned int *rainhas_bt(unsigned int n, unsigned int k, casa *c, unsigned int *
 // n, c e r são como em rainhas_bt()
 
 unsigned int *rainhas_ci(unsigned int n, unsigned int k, casa *c, unsigned int *r) {
+    // Um Vertice qualquer não vai ter mais do que 4n vizinhos logo
+    // Para acessar os vizinhos de um vertice v fazer:
+    //      V[v*n*n];
+    // Para iterar sobre os vizinhos de v
+    //      i = 0;
+    //      while(V[v*n*n + i] != n*n+1){
+    //          ...
+    //          i++;
+    //      }
+    uint *V = calloc(4*n*n*n, sizeof (uint));
+    memset(V, n*n+1, 4*n*n*n*(sizeof (uint)));
 
     n = n;
     k = k;

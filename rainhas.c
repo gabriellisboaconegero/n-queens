@@ -20,8 +20,8 @@
 // devolve r
 static uint maior_sol_sz;
 static uint *maior_sol;
-static int rainhas_bt_(uint n, uint *cols, uint *diags1, uint *diags2, uint *mat, uint row, uint *r);
-static int rainhas_bt_(uint n, uint *cols, uint *diags1, uint *diags2, uint *mat, uint row, uint *r){
+static int rainhas_bt_(uint n, uint *cols, uint *diags2, uint *diags1, uint *mat, uint row, uint *r);
+static int rainhas_bt_(uint n, uint *cols, uint *diags2, uint *diags1, uint *mat, uint row, uint *r){
     // Caso base
     if (row == n)
         return 1;
@@ -33,21 +33,21 @@ static int rainhas_bt_(uint n, uint *cols, uint *diags1, uint *diags2, uint *mat
         // 4. Se tiver uma rainha na diagonal secundaria
         if (mat[row*n + col] == 1   ||
             cols[col] == 1          ||
-            diags1[col + row] == 1  ||
-            diags2[row-col+n-1] == 1)
+            diags2[col + row] == 1  ||
+            diags1[row-col+n-1] == 1)
             continue;
 
         // Coloca rainha na coluna e diagonais atual
         r[row] = col+1;
-        cols[col] = diags1[row+col] = diags2[row-col+n-1] = 1;
+        cols[col] = diags2[row+col] = diags1[row-col+n-1] = 1;
 
         // Se achou retorna
-        if (rainhas_bt_(n, cols, diags1, diags2, mat, row+1, r) == 1)
+        if (rainhas_bt_(n, cols, diags2, diags1, mat, row+1, r) == 1)
             return 1;
 
         r[row] = 0;
         // Se não faz o backtaking
-        cols[col] = diags1[row+col] = diags2[row-col+n-1] = 0;
+        cols[col] = diags2[row+col] = diags1[row-col+n-1] = 0;
     }
     // Salva maior sequencia até agora
     if (row+1 > maior_sol_sz){
@@ -72,29 +72,31 @@ unsigned int *rainhas_bt(unsigned int n, unsigned int k, casa *c, unsigned int *
         mat[(c[i].linha-1)*n + c[i].coluna-1] = 1;
 
     // Vetor de diagonal secundaria:
-    //      diags1[i] == 1: Se tem rainha na diagonal secundaria
-    //      diags1[i] == 0: c.c
+    //      diags2[i] == 1: Se tem rainha na diagonal secundaria
+    //      diags2[i] == 0: c.c
     // Fórmula de indexação (dado linha i e coluna j):
     //      diag = i + j
-    uint *diags1  = calloc(2*n, (sizeof (uint)));
+    uint *diags2  = calloc(2*n, (sizeof (uint)));
 
     // Vetor de diagonal principal:
     //      diags1[i] == 1: Se tem rainha na diagonal principal
     //      diags1[i] == 0: c.c
     // Fórmula de indexação (dado linha i e coluna j):
     //      diag = i - j + n - 1
-    uint *diags2  = calloc(2*n, (sizeof (uint)));
+    uint *diags1  = calloc(2*n, (sizeof (uint)));
 
     // Vetor de maior sequencia, guarda a maior sequencia
     // em caso de não ter solução o problema
     maior_sol = calloc(n, (sizeof (uint)));
     
-    if (!rainhas_bt_(n, cols, diags1, diags2, mat, 0, r))
+    if (!rainhas_bt_(n, cols, diags2, diags1, mat, 0, r))
         memcpy(r, maior_sol, n*sizeof(uint));
+
     free(cols);
     free(diags1);
     free(diags2);
     free(mat);
+    free(maior_sol);
 
     return r;
 }

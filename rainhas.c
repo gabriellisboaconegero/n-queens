@@ -106,24 +106,65 @@ unsigned int *rainhas_bt(unsigned int n, unsigned int k, casa *c, unsigned int *
 // conjunto independente de um grafo
 //
 // n, c e r são como em rainhas_bt()
-// static int rainhas_ci_(unsigned int n, int *mat_adj, unsigned int *r);
-// static int rainhas_ci_(unsigned int n, int *mat_adj, unsigned int *r){
-//     if (r.size() == n)
-//         return r;
-//     if (r.size() + c.size() < n)
-//         return false;
-// }
+
+// TODO: Mudar c_uns_count para int
+// TODO: Implementar função para retirar vértice v de C
+
+// Para todo vértice em C verifica se é vizinho de v e decrementa o grau
+// se grau < 0 então i não está no grafo
+uint retira_vizinhos(uint t, int *mat_adj, uint v, int *c, uint c_uns_count){
+    for (uint i = 0; i < t ; i++){
+	if (v != i && mat_adj[v*t + i] == 1){
+	    c[i]--;
+	    if (c[i] == 0)
+		c_uns_count--;
+	}
+    }
+    return c_uns_count;
+}
+
+// Para todo vértice em C verifica se é vizinho de v e decrementa o grau
+// se grau > 0 então i está no grafo
+uint adiciona_vizinhos(uint t, int *mat_adj, uint v, int *c, uint c_uns_count){
+    for (uint i = 0; i < t; i++){
+	if (v != i && mat_adj[v*t + i] == 1){
+	    c[i]++;
+	    if (c[i] == 1)
+		c_uns_count++;
+	}
+    }
+    return c_uns_count;
+}
+
+static int rainhas_ci_(uint n, int *mat_adj, uint t, uint I_sz, uint *I, int *c, uint c_uns_count){
+    if (I_sz == n)
+        return 1;
+    if (I_sz + c_uns_count < n)
+        return 0;
+	// Remove vertice aleatório v de C
+	c[v] = 0;
+	c_uns_count--;
+	// Adiciona v em I
+	I[I_sz++] = v;
+	// Remove vizinhos de v de C
+	c_uns_count = retira_vizinhos(t, mat_adj, v, c, c_uns_count);
+	// Chama recursivamente
+	if (rainhas_ci_(n, mat_adj, t, I_sz, I, c, c_uns_count))
+		return 1;
+	
+	// ------------------- Backtracking -------------------
+	// Se não achou remove v de I
+	I_sz--;
+	// Adiciona vizinhos de v em C
+	c_uns_count = adiciona_vizinhos(t, mat_adj, v, c, c_uns_count);
+	// Chama recursivamente
+	return rainhas_ci_(n, mat_adj, t, I_sz, I, c, c_uns_count);
+	// ------------------- Backtracking -------------------
+}
 
 unsigned int *rainhas_ci(unsigned int n, unsigned int k, casa *c, unsigned int *r) {
     int *mat_adj = calloc(n*n*n*n, sizeof(int));
     uint t = n*n;
-
-    // Matriz de casas proibidas (indexada por i*n + j):
-    //      mat[i*n+j] == 1: se casa é proibida
-    //      mat[i*n+j] == 0: c.c
-    uint *mat  = calloc(n*n, (sizeof (uint)));
-    for (uint i = 0; i < k; i++)
-        mat[(c[i].linha-1)*n + c[i].coluna-1] = 1;
 
     for (uint i = 0; i < t; i++){
         for (uint j = i; j < t; j++){
@@ -137,18 +178,30 @@ unsigned int *rainhas_ci(unsigned int n, unsigned int k, casa *c, unsigned int *
             // 2. Verifica coluna
             // 3. Verifica diagonal secundaria
             // 4. Verifica diagonal principal
-            // 5. Verifica se i é casa proibida
-            // 6. Verifica se j é casa proibida
-            // função lógica: (1 ou 2 ou 3 ou 4) e 5 e 6
-            mat_adj[i*t + j] = ((row_i == row_j) ||
+            mat_adj[i*t + j] =  (row_i == row_j) ||
                                 (col_i == col_j) ||
                                 (row_i + col_i == row_j + col_j) ||
-                                (row_i - col_j == row_j - col_j)) &&
-                                (mat[row_i*n+col_i] != 1) &&
-                                (mat[row_j*n+col_j] != 1);
+                                (row_i - col_j == row_j - col_j);
         }
     }
-    free(mat);
+	// Vetor de situação dos vértices
+	// C[i] < 1: se vértice i não está no grafo
+	// C[i] == 1: se vértice i está no grafo
+	int *C = calloc(t, sizeof(int));
+	memset(C, 1, t*sizeof(int));
+	// Retira as casa proibidas do grafo
+	for (uint i = 0; i < k; i++)
+		C[(c[i].linha-1)*n + c[i].coluna-1] = 0;
+	// Após retirar os vértices proibidos, a quantidade de vértices no grafo é t - k
+	uint c_uns_count = t - k;
+	
+	// Vetor de vértices independentes
+	uint *I = calloc(n, sizeof(uint));
+	uint I_sz = 0;
 
+	rainhas_ci_(n, mat_adj, t, I_sz, I, C, c_uns_count);
+	free(C);
+	free(mat_adj);
+	free(I);
     return r;
 }

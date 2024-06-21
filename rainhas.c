@@ -18,6 +18,8 @@
 //      r[i] = 0     indica que não há rainha nenhuma na linha i+1
 //
 // devolve r
+static uint maior_sol_sz;
+static uint *maior_sol;
 static int rainhas_bt_(uint n, uint *cols, uint *diags1, uint *diags2, uint *mat, uint row, uint *r);
 static int rainhas_bt_(uint n, uint *cols, uint *diags1, uint *diags2, uint *mat, uint row, uint *r){
     // Caso base
@@ -46,6 +48,11 @@ static int rainhas_bt_(uint n, uint *cols, uint *diags1, uint *diags2, uint *mat
         r[row] = 0;
         // Se não faz o backtaking
         cols[col] = diags1[row+col] = diags2[row-col+n-1] = 0;
+    }
+    // Salva maior sequencia até agora
+    if (row+1 > maior_sol_sz){
+	maior_sol_sz = row;
+	memcpy(maior_sol, r, n*sizeof(uint));
     }
     // Não achou nenhum lugar volta tudo
     return 0;
@@ -77,8 +84,13 @@ unsigned int *rainhas_bt(unsigned int n, unsigned int k, casa *c, unsigned int *
     // Fórmula de indexação (dado linha i e coluna j):
     //      diag = i - j + n - 1
     uint *diags2  = calloc(2*n, (sizeof (uint)));
+
+    // Vetor de maior sequencia, guarda a maior sequencia
+    // em caso de não ter solução o problema
+    maior_sol = calloc(n, (sizeof (uint)));
     
-    rainhas_bt_(n, cols, diags1, diags2, mat, 0, r);
+    if (!rainhas_bt_(n, cols, diags1, diags2, mat, 0, r))
+        memcpy(r, maior_sol, n*sizeof(uint));
     free(cols);
     free(diags1);
     free(diags2);
@@ -92,13 +104,13 @@ unsigned int *rainhas_bt(unsigned int n, unsigned int k, casa *c, unsigned int *
 // conjunto independente de um grafo
 //
 // n, c e r são como em rainhas_bt()
-static int rainhas_ci_(unsigned int n, int *mat_adj, unsigned int *r){
-    if (r.size() == n)
-        return r;
-    if (r.size() + c.size() < n)
-        return false;
-
-}
+// static int rainhas_ci_(unsigned int n, int *mat_adj, unsigned int *r);
+// static int rainhas_ci_(unsigned int n, int *mat_adj, unsigned int *r){
+//     if (r.size() == n)
+//         return r;
+//     if (r.size() + c.size() < n)
+//         return false;
+// }
 
 unsigned int *rainhas_ci(unsigned int n, unsigned int k, casa *c, unsigned int *r) {
     int *mat_adj = calloc(n*n*n*n, sizeof(int));

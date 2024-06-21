@@ -9,7 +9,7 @@ static clock_t inicio, fim;
 #define CRONOMETRA(call,t) inicio = clock(); (call); fim = clock(); t=fim-inicio
 
 //------------------------------------------------------------------------------
-static void mostra_resposta(unsigned int n, unsigned int *r) {
+static void mostra_resposta(unsigned int n, unsigned int *r, casa *c, unsigned int l) {
     for (unsigned int i=0; i<n; i++) {
         printf("%u, ", r[i]);
     }
@@ -17,12 +17,20 @@ static void mostra_resposta(unsigned int n, unsigned int *r) {
     printf("\n");
     for (unsigned int i=0; i<n; i++) {
         for (unsigned int j=0; j<2*n; j++) {
+            for (unsigned int k=0; k < l; k++){
+                if (i == (c[k].linha-1) && j/2 == (c[k].coluna-1)){
+                    printf("\x1b[1;31m█\x1b[m");
+                    goto defer;              
+                }
+
+            }
             if (j/2 == r[i]-1)
                 printf("\x1b[1;33m█\x1b[m");
             else if ((j/2 + i) % 2)
                 printf("\x1b[1;30m█\x1b[m");
             else
                 printf("█");
+defer:
         }
         printf("\n");
     }
@@ -52,9 +60,9 @@ static casa *proibe_diagonais(unsigned int n, casa *proibido) {
 }
 
 //------------------------------------------------------------------------------
-int main (void) {
+int main (int argc, char **argv) {
 
-    unsigned int n = 20;
+    unsigned int n = atoi(argv[1]);
     unsigned int *resposta = malloc(n*sizeof(unsigned int));
 
     unsigned int k = 2 * n;
@@ -66,13 +74,13 @@ int main (void) {
     long int tempo_bt;
     CRONOMETRA(rainhas_bt(n, k, proibido, resposta), tempo_bt);
     printf("%ld\n", tempo_bt);
-    mostra_resposta(n, resposta);
+    mostra_resposta(n, resposta, proibido, k);
 
     printf("grafo: ");
     long int tempo_ci;
     CRONOMETRA(rainhas_ci(n, k, proibido, resposta), tempo_ci);
     printf("%ld\n", tempo_ci);
-    mostra_resposta(n, resposta);
+    mostra_resposta(n, resposta, proibido, k);
 
     printf("%.2f\n", (double)tempo_ci/(double)tempo_bt);
 

@@ -1,6 +1,7 @@
 #include "rainhas.h"
 #include <stdlib.h>
 #include <string.h>
+#include <stdio.h>
 #define uint unsigned int
 #define MAX(a, b) ((a) > (b) ? (a) : (b))
 
@@ -51,28 +52,32 @@ static int rainhas_bt_(uint n, uint *cols, uint *diags1, uint *diags2, uint *mat
 }
 
 unsigned int *rainhas_bt(unsigned int n, unsigned int k, casa *c, unsigned int *r) {
+    // Vetor de colunas:
+    //      cols[i] == 1: se tem rainha na coluna i
+    //      cols[i] == 0: c.c
     uint *cols = calloc(n, (sizeof (uint)));
 
+    // Matriz de casas proibidas (indexada por i*n + j):
+    //      mat[i*n+j] == 1: se casa é proibida
+    //      mat[i*n+j] == 0: c.c
     uint *mat  = calloc(n*n, (sizeof (uint)));
     for (uint i = 0; i < k; i++)
         mat[(c[i].linha-1)*n + c[i].coluna-1] = 1;
 
+    // Vetor de diagonal secundaria:
+    //      diags1[i] == 1: Se tem rainha na diagonal secundaria
+    //      diags1[i] == 0: c.c
+    // Fórmula de indexação (dado linha i e coluna j):
+    //      diag = i + j
     uint *diags1  = calloc(2*n, (sizeof (uint)));
 
+    // Vetor de diagonal principal:
+    //      diags1[i] == 1: Se tem rainha na diagonal principal
+    //      diags1[i] == 0: c.c
+    // Fórmula de indexação (dado linha i e coluna j):
+    //      diag = i - j + n - 1
     uint *diags2  = calloc(2*n, (sizeof (uint)));
     
-#ifdef DEBUG
-    for (unsigned int i=0; i<n; i++) {
-        for (unsigned int j=0; j<n; j++) {
-            if (mat[i*n + j])
-                printf("*");
-            else
-                printf(".");
-        }
-        printf("\n");
-    }
-#endif
-
     rainhas_bt_(n, cols, diags1, diags2, mat, 0, r);
     free(cols);
     free(diags1);
@@ -87,23 +92,49 @@ unsigned int *rainhas_bt(unsigned int n, unsigned int k, casa *c, unsigned int *
 // conjunto independente de um grafo
 //
 // n, c e r são como em rainhas_bt()
+static int rainhas_ci_(unsigned int n, int *mat_adj, unsigned int *r){
+    if (r.size() == n)
+        return r;
+    if (r.size() + c.size() < n)
+        return false;
+
+}
 
 unsigned int *rainhas_ci(unsigned int n, unsigned int k, casa *c, unsigned int *r) {
-    // Um Vertice qualquer não vai ter mais do que 4n vizinhos logo
-    // Para acessar os vizinhos de um vertice v fazer:
-    //      V[v*n*n];
-    // Para iterar sobre os vizinhos de v
-    //      i = 0;
-    //      while(V[v*n*n + i] != n*n+1){
-    //          ...
-    //          i++;
-    //      }
-    uint *V = calloc(4*n*n*n, sizeof (uint));
-    memset(V, n*n+1, 4*n*n*n*(sizeof (uint)));
+    int *mat_adj = calloc(n*n*n*n, sizeof(int));
+    uint t = n*n;
 
-    n = n;
-    k = k;
-    c = c;
+    // Matriz de casas proibidas (indexada por i*n + j):
+    //      mat[i*n+j] == 1: se casa é proibida
+    //      mat[i*n+j] == 0: c.c
+    uint *mat  = calloc(n*n, (sizeof (uint)));
+    for (uint i = 0; i < k; i++)
+        mat[(c[i].linha-1)*n + c[i].coluna-1] = 1;
+
+    for (uint i = 0; i < t; i++){
+        for (uint j = i; j < t; j++){
+            uint row_i = i/n;
+            uint col_i = i%n;
+            uint row_j = j/n;
+            uint col_j = j%n;
+
+            // Verifica se casa i é vizinha de casa j
+            // 1. Verifica linha
+            // 2. Verifica coluna
+            // 3. Verifica diagonal secundaria
+            // 4. Verifica diagonal principal
+            // 5. Verifica se i é casa proibida
+            // 6. Verifica se j é casa proibida
+            // função lógica: (1 ou 2 ou 3 ou 4) e 5 e 6
+            mat_adj[i*t + j] = ((row_i == row_j) ||
+                                (col_i == col_j) ||
+                                (row_i + col_i == row_j + col_j) ||
+                                (row_i - col_j == row_j - col_j)) &&
+                                (mat[row_i*n+col_i] != 1) &&
+                                (mat[row_j*n+col_j] != 1);
+        }
+    }
+    free(mat);
 
     return r;
 }

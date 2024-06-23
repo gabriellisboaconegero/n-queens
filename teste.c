@@ -59,16 +59,55 @@ static casa *proibe_diagonais(unsigned int n, casa *proibido) {
     return proibido + 2*n;
 }
 
+static casa *proibe_linha(unsigned int n, casa *proibido, unsigned int linha) {
+    for(unsigned int i = 0; i < n; i++) {
+        proibido[i].linha = linha;
+        proibido[i].coluna = i+1;
+    }
+
+    return proibido + n;
+}
+static casa *proibe_coluna(unsigned int n, casa *proibido, unsigned int coluna) {
+    for(unsigned int i = 0; i < n; i++) {
+        proibido[i].linha = i+1;
+        proibido[i].coluna = coluna;
+    }
+
+    return proibido + n;
+}
+
+static casa *proibe_random(unsigned int n, casa *proibido, int max) {
+    for(int i = 0; i < max; i++) {
+        proibido[i].linha = rand() % n + 1;
+        proibido[i].coluna = rand() % n + 1;
+    }
+
+    return proibido + max;
+}
+
 //------------------------------------------------------------------------------
 int main (int argc, char **argv) {
 
+    if (argc < 2){
+        fprintf(stderr, "[ERRO]: %s <tam>\n", argv[0]);
+        exit(1);
+    }
     unsigned int n = atoi(argv[1]);
     unsigned int *resposta = malloc(n*sizeof(unsigned int));
 
-    unsigned int k = 2 * n;
-    casa *proibido = malloc(k*sizeof(casa));
-
-    proibe_diagonais(n, proibido);
+    casa *proibido = malloc(n*n*3*sizeof(casa));
+    unsigned int k = 3*n;
+    /* proibe_diagonais(n, proibido); */
+    /* proibe_coluna(n, */
+    /* proibe_coluna(n, */
+    /* proibe_coluna(n, */
+    /* proibe_linha(n, */
+    /* proibe_linha(n, */
+    /* proibe_linha(n, proibido, */
+    /* 1), n), n/2+1), 1), n), n/2+1); */
+    srand(1234);
+    proibe_coluna(n, proibe_random(n, proibido, k), n/2+1);
+    k+=n;
 
     printf("backtracking: ");
     long int tempo_bt;

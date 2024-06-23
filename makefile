@@ -44,7 +44,7 @@ CPPFLAGS = $(COMMON_FLAGS)
 #------------------------------------------------------------------------------
 all : teste
 
-debug: CFLAGS += -DDEBUG
+debug: CFLAGS += -DDEBUG -g
 debug: all
 
 rainhas.o teste.o : %.o : %.c

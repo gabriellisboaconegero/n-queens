@@ -20,11 +20,25 @@
 // devolve r
 static uint maior_sol_sz;
 static uint *maior_sol;
-static int rainhas_bt_(uint n, uint *cols, uint *diags2, uint *diags1, uint *mat, uint row, uint *r);
-static int rainhas_bt_(uint n, uint *cols, uint *diags2, uint *diags1, uint *mat, uint row, uint *r){
+static int rainhas_bt_(uint n, uint *cols, uint *diags2, uint *diags1, uint *mat, uint row, uint *r, uint sol_sz);
+static int rainhas_bt_(uint n, uint *cols, uint *diags2, uint *diags1, uint *mat, uint row, uint *r, uint sol_sz){
     // Caso base
-    if (row == n)
-        return 1;
+    if (row == n){
+        // Verificar se a solução até agora é a maior pois pode ser que seja
+        // e quando voltar a chamada recursiva ela não vai ser salva
+        // vide caso 5 com diagonais cortadas para entender
+        if (sol_sz > maior_sol_sz){
+            maior_sol_sz = sol_sz;
+            memcpy(maior_sol, r, n*sizeof(uint));
+        }
+        return sol_sz == n;
+    }
+    // Não desce se não tiver como melhorar
+    // Nesse caso se não tiver mais linhas que somam
+    // mais que a maior solução
+    // OMG: A diferença que essa bomba faz, subiu o topo de uns 14 para 17
+    if (sol_sz + n-row <= maior_sol_sz)
+        return 0;
 
     for (uint col = 0; col < n; col++){
         // 1. Se for uma casa proibida
@@ -42,20 +56,23 @@ static int rainhas_bt_(uint n, uint *cols, uint *diags2, uint *diags1, uint *mat
         cols[col] = diags2[row+col] = diags1[row-col+n-1] = 1;
 
         // Se achou retorna
-        if (rainhas_bt_(n, cols, diags2, diags1, mat, row+1, r) == 1)
+        if (rainhas_bt_(n, cols, diags2, diags1, mat, row+1, r, sol_sz+1) == 1)
             return 1;
 
         r[row] = 0;
         // Se não faz o backtaking
         cols[col] = diags2[row+col] = diags1[row-col+n-1] = 0;
     }
+    /* for (int i = 0; i < n; i++) */
+    /*     printf("%d ", r[i]); */
+    /* printf("\n"); */
     // Salva maior sequencia até agora
-    if (row+1 > maior_sol_sz){
-	maior_sol_sz = row;
-	memcpy(maior_sol, r, n*sizeof(uint));
+    if (sol_sz > maior_sol_sz){
+        maior_sol_sz = sol_sz;
+        memcpy(maior_sol, r, n*sizeof(uint));
     }
     // Não achou nenhum lugar volta tudo
-    return 0;
+    return rainhas_bt_(n, cols, diags2, diags1, mat, row+1, r, sol_sz);
 }
 
 unsigned int *rainhas_bt(unsigned int n, unsigned int k, casa *c, unsigned int *r) {
@@ -88,8 +105,8 @@ unsigned int *rainhas_bt(unsigned int n, unsigned int k, casa *c, unsigned int *
     // Vetor de maior sequencia, guarda a maior sequencia
     // em caso de não ter solução o problema
     maior_sol = calloc(n, (sizeof (uint)));
-    
-    if (!rainhas_bt_(n, cols, diags2, diags1, mat, 0, r))
+
+    if (!rainhas_bt_(n, cols, diags2, diags1, mat, 0, r, 0))
         memcpy(r, maior_sol, n*sizeof(uint));
 
     free(cols);
@@ -114,11 +131,11 @@ unsigned int *rainhas_bt(unsigned int n, unsigned int k, casa *c, unsigned int *
 // se grau < 0 então i não está no grafo
 uint retira_vizinhos(uint t, int *mat_adj, uint v, int *c, uint c_uns_count){
     for (uint i = 0; i < t ; i++){
-	if (v != i && mat_adj[v*t + i] == 1){
-	    c[i]--;
-	    if (c[i] == 0)
-		c_uns_count--;
-	}
+        if (v != i && mat_adj[v*t + i] == 1){
+            c[i]--;
+            if (c[i] == 0)
+                c_uns_count--;
+        }
     }
     return c_uns_count;
 }
@@ -127,11 +144,11 @@ uint retira_vizinhos(uint t, int *mat_adj, uint v, int *c, uint c_uns_count){
 // se grau > 0 então i está no grafo
 uint adiciona_vizinhos(uint t, int *mat_adj, uint v, int *c, uint c_uns_count){
     for (uint i = 0; i < t; i++){
-	if (v != i && mat_adj[v*t + i] == 1){
-	    c[i]++;
-	    if (c[i] == 1)
-		c_uns_count++;
-	}
+        if (v != i && mat_adj[v*t + i] == 1){
+            c[i]++;
+            if (c[i] == 1)
+                c_uns_count++;
+        }
     }
     return c_uns_count;
 }
@@ -141,25 +158,26 @@ static int rainhas_ci_(uint n, int *mat_adj, uint t, uint I_sz, uint *I, int *c,
         return 1;
     if (I_sz + c_uns_count < n)
         return 0;
-	// Remove vertice aleatório v de C
-	c[v] = 0;
-	c_uns_count--;
-	// Adiciona v em I
-	I[I_sz++] = v;
-	// Remove vizinhos de v de C
-	c_uns_count = retira_vizinhos(t, mat_adj, v, c, c_uns_count);
-	// Chama recursivamente
-	if (rainhas_ci_(n, mat_adj, t, I_sz, I, c, c_uns_count))
-		return 1;
-	
-	// ------------------- Backtracking -------------------
-	// Se não achou remove v de I
-	I_sz--;
-	// Adiciona vizinhos de v em C
-	c_uns_count = adiciona_vizinhos(t, mat_adj, v, c, c_uns_count);
-	// Chama recursivamente
-	return rainhas_ci_(n, mat_adj, t, I_sz, I, c, c_uns_count);
-	// ------------------- Backtracking -------------------
+    // Remove vertice aleatório v de C
+    int v = 0;
+    c[v] = 0;
+    c_uns_count--;
+    // Adiciona v em I
+    I[I_sz++] = v;
+    // Remove vizinhos de v de C
+    c_uns_count = retira_vizinhos(t, mat_adj, v, c, c_uns_count);
+    // Chama recursivamente
+    if (rainhas_ci_(n, mat_adj, t, I_sz, I, c, c_uns_count))
+        return 1;
+
+    // ------------------- Backtracking -------------------
+    // Se não achou remove v de I
+    I_sz--;
+    // Adiciona vizinhos de v em C
+    c_uns_count = adiciona_vizinhos(t, mat_adj, v, c, c_uns_count);
+    // Chama recursivamente
+    return rainhas_ci_(n, mat_adj, t, I_sz, I, c, c_uns_count);
+    // ------------------- Backtracking -------------------
 }
 
 unsigned int *rainhas_ci(unsigned int n, unsigned int k, casa *c, unsigned int *r) {
@@ -179,29 +197,29 @@ unsigned int *rainhas_ci(unsigned int n, unsigned int k, casa *c, unsigned int *
             // 3. Verifica diagonal secundaria
             // 4. Verifica diagonal principal
             mat_adj[i*t + j] =  (row_i == row_j) ||
-                                (col_i == col_j) ||
-                                (row_i + col_i == row_j + col_j) ||
-                                (row_i - col_j == row_j - col_j);
+                (col_i == col_j) ||
+                (row_i + col_i == row_j + col_j) ||
+                (row_i - col_j == row_j - col_j);
         }
     }
-	// Vetor de situação dos vértices
-	// C[i] < 1: se vértice i não está no grafo
-	// C[i] == 1: se vértice i está no grafo
-	int *C = calloc(t, sizeof(int));
-	memset(C, 1, t*sizeof(int));
-	// Retira as casa proibidas do grafo
-	for (uint i = 0; i < k; i++)
-		C[(c[i].linha-1)*n + c[i].coluna-1] = 0;
-	// Após retirar os vértices proibidos, a quantidade de vértices no grafo é t - k
-	uint c_uns_count = t - k;
-	
-	// Vetor de vértices independentes
-	uint *I = calloc(n, sizeof(uint));
-	uint I_sz = 0;
+    // Vetor de situação dos vértices
+    // C[i] < 1: se vértice i não está no grafo
+    // C[i] == 1: se vértice i está no grafo
+    int *C = calloc(t, sizeof(int));
+    memset(C, 1, t*sizeof(int));
+    // Retira as casa proibidas do grafo
+    for (uint i = 0; i < k; i++)
+        C[(c[i].linha-1)*n + c[i].coluna-1] = 0;
+    // Após retirar os vértices proibidos, a quantidade de vértices no grafo é t - k
+    uint c_uns_count = t - k;
 
-	rainhas_ci_(n, mat_adj, t, I_sz, I, C, c_uns_count);
-	free(C);
-	free(mat_adj);
-	free(I);
+    // Vetor de vértices independentes
+    uint *I = calloc(n, sizeof(uint));
+    uint I_sz = 0;
+
+    rainhas_ci_(n, mat_adj, t, I_sz, I, C, c_uns_count);
+    free(C);
+    free(mat_adj);
+    free(I);
     return r;
 }

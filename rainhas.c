@@ -18,9 +18,29 @@
 //      r[i] = 0     indica que não há rainha nenhuma na linha i+1
 //
 // devolve r
+
+// Tamanho da maior solução
 static uint maior_sol_sz;
+// Vetor que guarda maior solução
 static uint *maior_sol;
+
 static int rainhas_bt_(uint n, uint *cols, uint *diags2, uint *diags1, uint *mat, uint row, uint *r, uint sol_sz);
+// n: Tamanho do lado do tabuleiro
+// cols: vetor booleano que indica
+//      cols[i] == 1: Tem rainha nessa coluna
+//      cols[i] == 0: c.c
+// diags2: vetor booleano que indica
+//      diags2[i] == 1: Tem rainha nessa diagona secundaria
+//      diags2[i] == 0: c.c
+// diags1: vetor booleano que indica
+//      diags1[i] == 1: Tem rainha nessa diagona principal
+//      diags1[i] == 0: c.c
+// mat: Matriz booleana que indica
+//      mat[i][j] == 1: casa (i,j) é proibida
+//      mat[i][j] == 0: c.c
+// row: Linha do tabuleiro atual da recursão
+// r: Vetor de solução atual da recusão
+// sol_sz: tamanho da solução atual da recursão
 static int rainhas_bt_(uint n, uint *cols, uint *diags2, uint *diags1, uint *mat, uint row, uint *r, uint sol_sz){
     // Caso base
     if (row == n){
@@ -71,7 +91,9 @@ static int rainhas_bt_(uint n, uint *cols, uint *diags2, uint *diags1, uint *mat
         maior_sol_sz = sol_sz;
         memcpy(maior_sol, r, n*sizeof(uint));
     }
-    // Não achou nenhum lugar volta tudo
+    // Não conseguiu colocar nessa linha, tenta colocar na proxima
+    // É nessario para casos de uma linha inteira coberta ou em que a recursão
+    // para sem chegar no caso base (row == n)
     return rainhas_bt_(n, cols, diags2, diags1, mat, row+1, r, sol_sz);
 }
 

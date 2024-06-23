@@ -41,6 +41,10 @@ static int rainhas_bt_(uint n, uint *cols, uint *diags2, uint *diags1, uint *mat
 // row: Linha do tabuleiro atual da recursão
 // r: Vetor de solução atual da recusão
 // sol_sz: tamanho da solução atual da recursão
+// TODO: Implementar otimização de achar primeira linha livre
+//     (evita ficar verificando a linha inteira até perceber que ela não tem espaço livre)
+//     usar vetor rows_free_count que indica
+//          rows_free_count[i] == k: Quer dizer que a linha i tem k casas não livres (proibida ou atacada por rainha)
 static int rainhas_bt_(uint n, uint *cols, uint *diags2, uint *diags1, uint *mat, uint row, uint *r, uint sol_sz){
     // Caso base
     if (row == n){

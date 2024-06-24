@@ -24,7 +24,6 @@ static uint maior_sol_sz;
 // Vetor que guarda maior solução
 static uint *maior_sol;
 
-static int rainhas_bt_(uint n, uint *cols, uint *diags2, uint *diags1, uint *mat, uint row, uint *r, uint sol_sz);
 // n: Tamanho do lado do tabuleiro
 // cols: vetor booleano que indica
 //      cols[i] == 1: Tem rainha nessa coluna
@@ -45,6 +44,7 @@ static int rainhas_bt_(uint n, uint *cols, uint *diags2, uint *diags1, uint *mat
 //     (evita ficar verificando a linha inteira até perceber que ela não tem espaço livre)
 //     usar vetor rows_free_count que indica
 //          rows_free_count[i] == k: Quer dizer que a linha i tem k casas não livres (proibida ou atacada por rainha)
+// TODO: Refatorar código (utilizar strucst e mais funções de auxilio)
 static int rainhas_bt_(uint n, uint *cols, uint *diags2, uint *diags1, uint *mat, uint row, uint *r, uint sol_sz){
     // Caso base
     if (row == n){
@@ -152,10 +152,12 @@ unsigned int *rainhas_bt(unsigned int n, unsigned int k, casa *c, unsigned int *
 
 // TODO: Mudar c_uns_count para int
 // TODO: Implementar função para retirar vértice v de C
+// TODO: Fazer rainhas_ci_ funcionar para respostas menores que n (ou seja respostas onde tem rainhas faltando)
+// TODO: Ver problema de quando resposta tem tamanho 1, pode ser que pegue uma casa proibida (evitar isso)
 
 // Para todo vértice em C verifica se é vizinho de v e decrementa o grau
 // se grau < 0 então i não está no grafo
-uint retira_vizinhos(uint t, int *mat_adj, uint v, int *c, uint c_uns_count){
+static uint retira_vizinhos(uint t, int *mat_adj, uint v, int *c, uint c_uns_count){
     for (uint i = 0; i < t ; i++){
         if (v != i && mat_adj[v*t + i] == 1){
             c[i]--;
@@ -168,7 +170,7 @@ uint retira_vizinhos(uint t, int *mat_adj, uint v, int *c, uint c_uns_count){
 
 // Para todo vértice em C verifica se é vizinho de v e decrementa o grau
 // se grau > 0 então i está no grafo
-uint adiciona_vizinhos(uint t, int *mat_adj, uint v, int *c, uint c_uns_count){
+static uint adiciona_vizinhos(uint t, int *mat_adj, uint v, int *c, uint c_uns_count){
     for (uint i = 0; i < t; i++){
         if (v != i && mat_adj[v*t + i] == 1){
             c[i]++;
@@ -179,73 +181,124 @@ uint adiciona_vizinhos(uint t, int *mat_adj, uint v, int *c, uint c_uns_count){
     return c_uns_count;
 }
 
+static int random_avalible_vert(uint n, int *c, uint *res){
+    for (uint i = 0; i < n; i++){
+        if (c[i] == 1){
+            *res = i;
+            return 1;
+        }
+    }
+    return 0;
+}
+
 static int rainhas_ci_(uint n, int *mat_adj, uint t, uint I_sz, uint *I, int *c, uint c_uns_count){
     if (I_sz == n)
         return 1;
     if (I_sz + c_uns_count < n)
         return 0;
     // Remove vertice aleatório v de C
-    int v = 0;
+    uint v;
+    if (!random_avalible_vert(t, c, &v))
+        return 0;
+    // Marca vertice como retirado
     c[v] = 0;
     c_uns_count--;
+
     // Adiciona v em I
     I[I_sz++] = v;
+
     // Remove vizinhos de v de C
     c_uns_count = retira_vizinhos(t, mat_adj, v, c, c_uns_count);
+
     // Chama recursivamente
     if (rainhas_ci_(n, mat_adj, t, I_sz, I, c, c_uns_count))
         return 1;
 
     // ------------------- Backtracking -------------------
     // Se não achou remove v de I
-    I_sz--;
+    I[I_sz--] = 0;
+
     // Adiciona vizinhos de v em C
     c_uns_count = adiciona_vizinhos(t, mat_adj, v, c, c_uns_count);
+
     // Chama recursivamente
-    return rainhas_ci_(n, mat_adj, t, I_sz, I, c, c_uns_count);
+    int res = rainhas_ci_(n, mat_adj, t, I_sz, I, c, c_uns_count);
+    // Volta o vertice retirado, pois na chamda anterior ele não está retirado
+    c[v] = 1;
+    return res;
     // ------------------- Backtracking -------------------
 }
 
-unsigned int *rainhas_ci(unsigned int n, unsigned int k, casa *c, unsigned int *r) {
-    int *mat_adj = calloc(n*n*n*n, sizeof(int));
-    uint t = n*n;
+inline static uint get_col(uint v_id, uint n){
+    return v_id%n;
+}
+inline static uint get_row(uint v_id, uint n){
+    return v_id/n;
+}
 
-    for (uint i = 0; i < t; i++){
-        for (uint j = i; j < t; j++){
-            uint row_i = i/n;
-            uint col_i = i%n;
-            uint row_j = j/n;
-            uint col_j = j%n;
+static int *cria_matriz_adjacencia(uint n, uint k, casa *c){
+    int *mat_adj = calloc(n*n*n*n, sizeof(int));
+    // Matriz para dizer se casa é proibida ou não
+    uint *mat = calloc(n*n, sizeof(uint));
+
+    uint tam = n*n;
+
+    // Preenche matriz auxiliar
+    for (uint i = 0; i < k; i++)
+        // c[i].linha-1 pois é indexado começando em 1
+        mat[(c[i].linha-1)*n + c[i].coluna-1] = 1;
+
+    // Itera sobre a matriz para preencher ela
+    for (uint i = 0; i < tam; i++){
+        for (uint j = i; j < tam; j++){
+            uint row_i = get_row(i, n);
+            uint col_i = get_col(i, n);
+            uint row_j = get_row(j, n);
+            uint col_j = get_col(j, n);
 
             // Verifica se casa i é vizinha de casa j
             // 1. Verifica linha
             // 2. Verifica coluna
             // 3. Verifica diagonal secundaria
             // 4. Verifica diagonal principal
-            mat_adj[i*t + j] =  (row_i == row_j) ||
+            // 5. Se j é casa proibida liga ele com todo mundo
+            // 6. Se i é casa proibida liga ele com todo mundo
+            mat_adj[i*tam + j] =  (row_i == row_j) ||
                 (col_i == col_j) ||
                 (row_i + col_i == row_j + col_j) ||
-                (row_i - col_j == row_j - col_j);
+                (row_i - col_i == row_j - col_j) ||
+                (mat[i]) ||
+                (mat[j]);
+            mat_adj[j*tam + i] = mat_adj[i*tam + j];
         }
     }
+    free(mat);
+    return mat_adj;
+}
+
+unsigned int *rainhas_ci(unsigned int n, unsigned int k, casa *c, unsigned int *r) {
+    int *mat_adj = cria_matriz_adjacencia(n, k, c);
+    uint t = n*n;
     // Vetor de situação dos vértices
     // C[i] < 1: se vértice i não está no grafo
     // C[i] == 1: se vértice i está no grafo
     int *C = calloc(t, sizeof(int));
-    memset(C, 1, t*sizeof(int));
-    // Retira as casa proibidas do grafo
-    for (uint i = 0; i < k; i++)
-        C[(c[i].linha-1)*n + c[i].coluna-1] = 0;
-    // Após retirar os vértices proibidos, a quantidade de vértices no grafo é t - k
-    uint c_uns_count = t - k;
+    for (uint i = 0; i < t; i++)
+        C[i] = 1;
+    uint c_uns_count = t;
 
     // Vetor de vértices independentes
     uint *I = calloc(n, sizeof(uint));
     uint I_sz = 0;
 
     rainhas_ci_(n, mat_adj, t, I_sz, I, C, c_uns_count);
-    free(C);
+    for (uint i = 0; i < n; i++){
+        printf("%d ", I[i]);
+        r[get_row(I[i], n)] = get_col(I[i], n)+1;
+    }
+    printf("\n");
     free(mat_adj);
+    free(C);
     free(I);
     return r;
 }

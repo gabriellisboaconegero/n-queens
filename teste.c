@@ -1,7 +1,9 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <time.h>
+#include <string.h>
 #include "rainhas.h"
+#define uint unsigned int
 
 static clock_t inicio, fim;
 
@@ -86,6 +88,30 @@ static casa *proibe_random(unsigned int n, casa *proibido, int max) {
 }
 
 //------------------------------------------------------------------------------
+/* int main1 (int argc, char **argv) { */
+/*     int adj_mat[] = { */
+/*         1, 0, 0, 0, 1, 1, 1, 1, */
+/*         0, 1, 0, 0, 0, 0, 1, 0, */
+/*         0, 0, 1, 0, 0, 1, 0, 0, */
+/*         0, 0, 0, 1, 0, 1, 1, 0, */
+/*         1, 0, 0, 0, 1, 1, 0, 0, */
+/*         1, 0, 1, 1, 1, 1, 0, 0, */
+/*         1, 1, 0, 1, 0, 0, 1, 0, */
+/*         1, 0, 0, 0, 0, 0, 0, 1, */
+/*     }; */
+/*     uint adj_mat_sz = 8; */
+/*     int *C = calloc(adj_mat_sz, sizeof(int)); */
+/*     for (uint i = 0; i < adj_mat_sz; i++) */
+/*         C[i] = 1; */
+/*     uint c_uns_count = adj_mat_sz; */
+/*     uint *I = calloc(adj_mat_sz, sizeof(uint)); */
+/*     uint I_sz = 0; */
+/*     rainhas_ci_(5, adj_mat, adj_mat_sz, I_sz, I, C, c_uns_count); */
+/*     for (uint i = 0; i < adj_mat_sz; i++){ */
+/*         printf("%d ", I[i]); */
+/*     } */
+/*     printf("\n"); */
+/* } */
 int main (int argc, char **argv) {
 
     if (argc < 2){
@@ -96,7 +122,7 @@ int main (int argc, char **argv) {
     unsigned int *resposta = malloc(n*sizeof(unsigned int));
 
     casa *proibido = malloc(n*n*3*sizeof(casa));
-    unsigned int k = 3*n;
+    unsigned int k = 5*n;
     /* proibe_diagonais(n, proibido); */
     /* proibe_coluna(n, */
     /* proibe_coluna(n, */
@@ -106,8 +132,7 @@ int main (int argc, char **argv) {
     /* proibe_linha(n, proibido, */
     /* 1), n), n/2+1), 1), n), n/2+1); */
     srand(1234);
-    proibe_coluna(n, proibe_random(n, proibido, k), n/2+1);
-    k+=n;
+    proibe_random(n, proibido, k);
 
     printf("backtracking: ");
     long int tempo_bt;
@@ -115,13 +140,15 @@ int main (int argc, char **argv) {
     printf("%ld\n", tempo_bt);
     mostra_resposta(n, resposta, proibido, k);
 
-//     printf("grafo: ");
-//     long int tempo_ci;
-//     CRONOMETRA(rainhas_ci(n, k, proibido, resposta), tempo_ci);
-//     printf("%ld\n", tempo_ci);
-//     mostra_resposta(n, resposta, proibido, k);
+    memset(resposta, 0, n*sizeof(unsigned int));
 
-//     printf("%.2f\n", (double)tempo_ci/(double)tempo_bt);
+    printf("grafo: ");
+    long int tempo_ci;
+    CRONOMETRA(rainhas_ci(n, k, proibido, resposta), tempo_ci);
+    printf("%ld\n", tempo_ci);
+    mostra_resposta(n, resposta, proibido, k);
+
+    /* printf("%.2f\n", (double)tempo_ci/(double)tempo_bt); */
 
     free(proibido);
     free(resposta);

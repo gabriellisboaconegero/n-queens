@@ -279,6 +279,14 @@ static int *cria_matriz_adjacencia(uint n, uint k, casa *c){
 unsigned int *rainhas_ci(unsigned int n, unsigned int k, casa *c, unsigned int *r) {
     int *mat_adj = cria_matriz_adjacencia(n, k, c);
     uint t = n*n;
+#ifdef DEBUG_MAT
+    for (uint i = 0; i < t; i++){
+        for (uint j = i; j < t; j++){
+            printf("%d ", i == j ? 0 : mat_adj[i*t + j]);
+        }
+        printf("\n");
+    }
+#endif
     // Vetor de situação dos vértices
     // C[i] < 1: se vértice i não está no grafo
     // C[i] == 1: se vértice i está no grafo

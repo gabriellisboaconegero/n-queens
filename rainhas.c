@@ -5,6 +5,14 @@
 #define uint unsigned int
 #define MAX(a, b) ((a) > (b) ? (a) : (b))
 
+
+// Estrutura de lista de adjacência
+typedef struct lista_adjacencia{
+        unsigned int size;   // tamanho da lista de vizinhos
+        unsigned int *neighbors;     // lista de vizinhos
+} lista_adjacencia;
+
+
 //------------------------------------------------------------------------------
 // computa uma resposta para a instância (n,c) do problema das n rainhas 
 // com casas proibidas usando backtracking
@@ -154,6 +162,8 @@ unsigned int *rainhas_bt(unsigned int n, unsigned int k, casa *c, unsigned int *
 // TODO: Implementar função para retirar vértice v de C
 // TODO: Fazer rainhas_ci_ funcionar para respostas menores que n (ou seja respostas onde tem rainhas faltando)
 // TODO: Ver problema de quando resposta tem tamanho 1, pode ser que pegue uma casa proibida (evitar isso)
+// TODO: altera para lista de adjacência - não insere vértices proibidos
+// TODO: verificar a possibilidade de adicionar casas vizinhas ao mesmo tempo em cada uma de suas listas
 
 // Para todo vértice em C verifica se é vizinho de v e decrementa o grau
 // se grau < 0 então i não está no grafo
@@ -243,7 +253,7 @@ static int *cria_matriz_adjacencia(uint n, uint k, casa *c){
 
     uint tam = n*n;
 
-    // Preenche matriz auxiliar
+    // Preenche matriz auxiliar de casas proibidas
     for (uint i = 0; i < k; i++)
         // c[i].linha-1 pois é indexado começando em 1
         mat[(c[i].linha-1)*n + c[i].coluna-1] = 1;
@@ -274,6 +284,54 @@ static int *cria_matriz_adjacencia(uint n, uint k, casa *c){
     }
     free(mat);
     return mat_adj;
+}
+
+lista_adjacencia *cria_lista_adjacecia(uint n, uint k, casa *c){
+    // Matriz para dizer se casa é proibida ou não
+    uint *mat = calloc(n*n, sizeof(uint));
+    for (uint i = 0; i < k; i++)
+        // c[i].linha-1 pois é indexado começando em 1
+        mat[(c[i].linha-1)*n + c[i].coluna-1] = 1;
+
+    uint size_list = n*n;
+    struct lista_adjacencia *lista_adjacencia = calloc(size_list, sizeof(struct lista_adjacencia));
+
+    // preenche a lista de adjacencia, ignorando casas proibidas
+    lista_adjacencia[0].neighbors = calloc(4*n, sizeof(uint));
+    for (uint i = 0; i < n*n; i++){
+        if (mat[i]) // Se casa é proibida, ignora
+            continue;
+
+        uint row_i = get_row(i, n); 
+        uint col_i = get_col(i, n);
+        for (uint j = i + 1; j < n*n; j++){
+            uint row_j = get_row(j, n);
+            uint col_j = get_col(j, n);
+            if (mat[j])
+                continue;
+            
+            if (lista_adjacencia[i].neighbors == NULL)
+                lista_adjacencia[i].neighbors = calloc(4*n, sizeof(uint));
+
+
+            // verifica se casa i é vizinha de casa j
+            // 1. Verifica linha
+            // 2. Verifica coluna
+            // 3. Verifica diagonal secundaria
+            // 4. Verifica diagonal principal
+            if (row_i == row_j || col_i == col_j || row_i + col_i == row_j + col_j || row_i - col_i == row_j - col_j){
+                // TODO: ajeitar e refatorar
+                lista_adjacencia[i].neighbors = realloc(lista_adjacencia[i].neighbors, (lista_adjacencia[i].size+1)*sizeof(uint));
+                lista_adjacencia[i].neighbors[lista_adjacencia[i].size++] = j;
+                lista_adjacencia[j].neighbors = realloc(lista_adjacencia[j].neighbors, (lista_adjacencia[j].size+1)*sizeof(uint));
+                lista_adjacencia[j].neighbors[lista_adjacencia[j].size++] = i;
+            }
+        }
+        
+    }
+
+    free(mat);
+    return lista_adjacencia;
 }
 
 unsigned int *rainhas_ci(unsigned int n, unsigned int k, casa *c, unsigned int *r) {

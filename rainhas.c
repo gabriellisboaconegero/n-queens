@@ -203,7 +203,18 @@ static void libera_lista(lista_adjacencia* lista, uint t){
             free(lista[i].neighbors);
     free(lista);
 }
-
+static lista_adjacencia *copia_lista_sem_vertice(lista_adjacencia *lista, uint v, uint t){
+    lista_adjacencia *res = calloc(t, sizeof(lista_adjacencia));
+    for (uint i = 0; i < t; i++){
+        if (i != v){
+            res[i].neighbors = calloc(4*t, sizeof(uint));
+            for (uint j = 0; j < lista[i].size; j++)
+                if (lista[i].neighbors[j] != v)
+                    res[i].neighbors[res[i].size++] = lista[i].neighbors[j];
+        }
+    }
+    return res;
+}
 static int rainhas_ci_(uint n, uint t, uint I_sz, uint *I, lista_adjacencia *c, uint c_uns_count){
     if (I_sz == n)
         return 1;
@@ -215,6 +226,7 @@ static int rainhas_ci_(uint n, uint t, uint I_sz, uint *I, lista_adjacencia *c, 
         return 0;
     // Marca vertice como retirado
     c[v].stack = 0;
+    lista_adjacencia *c_copy = copia_lista_sem_vertice(c, v, t);
     c_uns_count--;
 
     // Adiciona v em I

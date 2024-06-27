@@ -286,21 +286,33 @@ static int *cria_matriz_adjacencia(uint n, uint k, casa *c){
     return mat_adj;
 }
 
+lista_adjacencia *adiciona_vizinhos_lista(lista_adjacencia* lista_adjacencia, uint i, uint j){
+    lista_adjacencia[i].neighbors[lista_adjacencia[i].size++] = j;
+    lista_adjacencia[j].neighbors[lista_adjacencia[j].size++] = i;
+
+    return lista_adjacencia;
+}
+
 lista_adjacencia *cria_lista_adjacecia(uint n, uint k, casa *c){
+    uint size_list = n*n;
+
     // Matriz para dizer se casa é proibida ou não
-    uint *mat = calloc(n*n, sizeof(uint));
+    uint *mat = calloc(size_list, sizeof(uint));
     for (uint i = 0; i < k; i++)
         // c[i].linha-1 pois é indexado começando em 1
         mat[(c[i].linha-1)*n + c[i].coluna-1] = 1;
 
-    uint size_list = n*n;
+    
     struct lista_adjacencia *lista_adjacencia = calloc(size_list, sizeof(struct lista_adjacencia));
-
+    
     // preenche a lista de adjacencia, ignorando casas proibidas
-    lista_adjacencia[0].neighbors = calloc(4*n, sizeof(uint));
-    for (uint i = 0; i < n*n; i++){
+    for (uint i = 0; i < size_list; i++){
         if (mat[i]) // Se casa é proibida, ignora
             continue;
+
+
+        if (lista_adjacencia[i].neighbors == NULL)
+            lista_adjacencia[i].neighbors = calloc(4*n, sizeof(uint));
 
         uint row_i = get_row(i, n); 
         uint col_i = get_col(i, n);
@@ -310,9 +322,8 @@ lista_adjacencia *cria_lista_adjacecia(uint n, uint k, casa *c){
             if (mat[j])
                 continue;
             
-            if (lista_adjacencia[i].neighbors == NULL)
-                lista_adjacencia[i].neighbors = calloc(4*n, sizeof(uint));
-
+            if (lista_adjacencia[j].neighbors == NULL)
+                lista_adjacencia[j].neighbors = calloc(4*n, sizeof(uint));
 
             // verifica se casa i é vizinha de casa j
             // 1. Verifica linha
@@ -320,11 +331,7 @@ lista_adjacencia *cria_lista_adjacecia(uint n, uint k, casa *c){
             // 3. Verifica diagonal secundaria
             // 4. Verifica diagonal principal
             if (row_i == row_j || col_i == col_j || row_i + col_i == row_j + col_j || row_i - col_i == row_j - col_j){
-                // TODO: ajeitar e refatorar
-                lista_adjacencia[i].neighbors = realloc(lista_adjacencia[i].neighbors, (lista_adjacencia[i].size+1)*sizeof(uint));
-                lista_adjacencia[i].neighbors[lista_adjacencia[i].size++] = j;
-                lista_adjacencia[j].neighbors = realloc(lista_adjacencia[j].neighbors, (lista_adjacencia[j].size+1)*sizeof(uint));
-                lista_adjacencia[j].neighbors[lista_adjacencia[j].size++] = i;
+                adiciona_vizinhos_lista(lista_adjacencia, i, j);
             }
         }
         
@@ -335,7 +342,17 @@ lista_adjacencia *cria_lista_adjacecia(uint n, uint k, casa *c){
 }
 
 unsigned int *rainhas_ci(unsigned int n, unsigned int k, casa *c, unsigned int *r) {
-    int *mat_adj = cria_matriz_adjacencia(n, k, c);
+    //int *mat_adj = cria_matriz_adjacencia(n, k, c);
+    lista_adjacencia *lista_adjacencia = cria_lista_adjacecia(n, k, c);
+    //imrpime a lista
+    for (uint i = 0; i < n*n; i++){
+        printf("%d: ", i);
+        for (uint j = 0; j < lista_adjacencia[i].size; j++){
+            printf("%d ", lista_adjacencia[i].neighbors[j]);
+        }
+        printf("\n");
+    }
+
     uint t = n*n;
 #ifdef DEBUG_MAT
     for (uint i = 0; i < t; i++){
@@ -357,13 +374,14 @@ unsigned int *rainhas_ci(unsigned int n, unsigned int k, casa *c, unsigned int *
     uint *I = calloc(n, sizeof(uint));
     uint I_sz = 0;
 
-    rainhas_ci_(n, mat_adj, t, I_sz, I, C, c_uns_count);
+    //rainhas_ci_(n, mat_adj, t, I_sz, I, C, c_uns_count);
     for (uint i = 0; i < n; i++){
         printf("%d ", I[i]);
         r[get_row(I[i], n)] = get_col(I[i], n)+1;
     }
     printf("\n");
-    free(mat_adj);
+    //free(mat_adj);
+    free(lista_adjacencia); 
     free(C);
     free(I);
     return r;

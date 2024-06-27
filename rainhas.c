@@ -8,8 +8,9 @@
 
 // Estrutura de lista de adjacência
 typedef struct lista_adjacencia{
-        unsigned int size;   // tamanho da lista de vizinhos
-        unsigned int *neighbors;     // lista de vizinhos
+    uint size;   // tamanho da lista de vizinhos
+    uint *neighbors;     // lista de vizinhos
+    int stack;   // pilha para backtracking
 } lista_adjacencia;
 
 
@@ -163,37 +164,32 @@ unsigned int *rainhas_bt(unsigned int n, unsigned int k, casa *c, unsigned int *
 // TODO: Fazer rainhas_ci_ funcionar para respostas menores que n (ou seja respostas onde tem rainhas faltando)
 // TODO: Ver problema de quando resposta tem tamanho 1, pode ser que pegue uma casa proibida (evitar isso)
 // TODO: altera para lista de adjacência - não insere vértices proibidos
-// TODO: verificar a possibilidade de adicionar casas vizinhas ao mesmo tempo em cada uma de suas listas
 
 // Para todo vértice em C verifica se é vizinho de v e decrementa o grau
 // se grau < 0 então i não está no grafo
-static uint retira_vizinhos(uint t, int *mat_adj, uint v, int *c, uint c_uns_count){
-    for (uint i = 0; i < t ; i++){
-        if (v != i && mat_adj[v*t + i] == 1){
-            c[i]--;
-            if (c[i] == 0)
-                c_uns_count--;
-        }
+static uint retira_vizinhos(uint v, lista_adjacencia *c, uint c_uns_count){
+    for (uint i = 0; i < c[v].size ; i++){
+        c[c[v].neighbors[i]].stack--;
+        if (c[i].stack == 1)
+            c_uns_count--;
     }
     return c_uns_count;
 }
 
 // Para todo vértice em C verifica se é vizinho de v e decrementa o grau
 // se grau > 0 então i está no grafo
-static uint adiciona_vizinhos(uint t, int *mat_adj, uint v, int *c, uint c_uns_count){
-    for (uint i = 0; i < t; i++){
-        if (v != i && mat_adj[v*t + i] == 1){
-            c[i]++;
-            if (c[i] == 1)
-                c_uns_count++;
-        }
+static uint adiciona_vizinhos(uint v, lista_adjacencia *c, uint c_uns_count){
+    for (uint i = 0; i < c[v].size; i++){
+        c[c[v].neighbors[i]].stack++;
+        if (c[i].stack == 1)
+            c_uns_count++;
     }
     return c_uns_count;
 }
 
-static int random_avalible_vert(uint n, int *c, uint *res){
+static int random_avalible_vert(uint n, lista_adjacencia *c, uint *res){
     for (uint i = 0; i < n; i++){
-        if (c[i] == 1){
+        if (c[i].stack == 1){
             *res = i;
             return 1;
         }
@@ -201,7 +197,14 @@ static int random_avalible_vert(uint n, int *c, uint *res){
     return 0;
 }
 
-static int rainhas_ci_(uint n, int *mat_adj, uint t, uint I_sz, uint *I, int *c, uint c_uns_count){
+static void libera_lista(lista_adjacencia* lista, uint t){
+    for(uint i = 0; i < t; i++)
+        if (lista[i].neighbors != NULL)
+            free(lista[i].neighbors);
+    free(lista);
+}
+
+static int rainhas_ci_(uint n, uint t, uint I_sz, uint *I, lista_adjacencia *c, uint c_uns_count){
     if (I_sz == n)
         return 1;
     if (I_sz + c_uns_count < n)
@@ -211,17 +214,17 @@ static int rainhas_ci_(uint n, int *mat_adj, uint t, uint I_sz, uint *I, int *c,
     if (!random_avalible_vert(t, c, &v))
         return 0;
     // Marca vertice como retirado
-    c[v] = 0;
+    c[v].stack = 0;
     c_uns_count--;
 
     // Adiciona v em I
     I[I_sz++] = v;
 
     // Remove vizinhos de v de C
-    c_uns_count = retira_vizinhos(t, mat_adj, v, c, c_uns_count);
+    c_uns_count = retira_vizinhos(v, c, c_uns_count);
 
     // Chama recursivamente
-    if (rainhas_ci_(n, mat_adj, t, I_sz, I, c, c_uns_count))
+    if (rainhas_ci_(n, t, I_sz, I, c, c_uns_count))
         return 1;
 
     // ------------------- Backtracking -------------------
@@ -229,12 +232,12 @@ static int rainhas_ci_(uint n, int *mat_adj, uint t, uint I_sz, uint *I, int *c,
     I[I_sz--] = 0;
 
     // Adiciona vizinhos de v em C
-    c_uns_count = adiciona_vizinhos(t, mat_adj, v, c, c_uns_count);
+    c_uns_count = adiciona_vizinhos(v, c, c_uns_count);
 
     // Chama recursivamente
-    int res = rainhas_ci_(n, mat_adj, t, I_sz, I, c, c_uns_count);
+    int res = rainhas_ci_(n, t, I_sz, I, c, c_uns_count);
     // Volta o vertice retirado, pois na chamda anterior ele não está retirado
-    c[v] = 1;
+    c[v].stack = 1;
     return res;
     // ------------------- Backtracking -------------------
 }
@@ -246,54 +249,14 @@ inline static uint get_row(uint v_id, uint n){
     return v_id/n;
 }
 
-static int *cria_matriz_adjacencia(uint n, uint k, casa *c){
-    int *mat_adj = calloc(n*n*n*n, sizeof(int));
-    // Matriz para dizer se casa é proibida ou não
-    uint *mat = calloc(n*n, sizeof(uint));
+static lista_adjacencia *adiciona_vizinhos_lista(lista_adjacencia* lista, uint i, uint j){
+    lista[i].neighbors[lista[i].size++] = j;
+    lista[j].neighbors[lista[j].size++] = i;
 
-    uint tam = n*n;
-
-    // Preenche matriz auxiliar de casas proibidas
-    for (uint i = 0; i < k; i++)
-        // c[i].linha-1 pois é indexado começando em 1
-        mat[(c[i].linha-1)*n + c[i].coluna-1] = 1;
-
-    // Itera sobre a matriz para preencher ela
-    for (uint i = 0; i < tam; i++){
-        for (uint j = i; j < tam; j++){
-            uint row_i = get_row(i, n);
-            uint col_i = get_col(i, n);
-            uint row_j = get_row(j, n);
-            uint col_j = get_col(j, n);
-
-            // Verifica se casa i é vizinha de casa j
-            // 1. Verifica linha
-            // 2. Verifica coluna
-            // 3. Verifica diagonal secundaria
-            // 4. Verifica diagonal principal
-            // 5. Se j é casa proibida liga ele com todo mundo
-            // 6. Se i é casa proibida liga ele com todo mundo
-            mat_adj[i*tam + j] =  (row_i == row_j) ||
-                (col_i == col_j) ||
-                (row_i + col_i == row_j + col_j) ||
-                (row_i - col_i == row_j - col_j) ||
-                (mat[i]) ||
-                (mat[j]);
-            mat_adj[j*tam + i] = mat_adj[i*tam + j];
-        }
-    }
-    free(mat);
-    return mat_adj;
+    return lista;
 }
 
-lista_adjacencia *adiciona_vizinhos_lista(lista_adjacencia* lista_adjacencia, uint i, uint j){
-    lista_adjacencia[i].neighbors[lista_adjacencia[i].size++] = j;
-    lista_adjacencia[j].neighbors[lista_adjacencia[j].size++] = i;
-
-    return lista_adjacencia;
-}
-
-lista_adjacencia *cria_lista_adjacecia(uint n, uint k, casa *c){
+static lista_adjacencia *cria_lista_adjacecia(uint n, uint k, casa *c, uint *c_uns_count){
     uint size_list = n*n;
 
     // Matriz para dizer se casa é proibida ou não
@@ -303,16 +266,17 @@ lista_adjacencia *cria_lista_adjacecia(uint n, uint k, casa *c){
         mat[(c[i].linha-1)*n + c[i].coluna-1] = 1;
 
     
-    struct lista_adjacencia *lista_adjacencia = calloc(size_list, sizeof(struct lista_adjacencia));
+    struct lista_adjacencia *lista = calloc(size_list, sizeof(struct lista_adjacencia));
     
     // preenche a lista de adjacencia, ignorando casas proibidas
     for (uint i = 0; i < size_list; i++){
         if (mat[i]) // Se casa é proibida, ignora
             continue;
+        lista[i].stack = 1;
+        *c_uns_count += 1;
 
-
-        if (lista_adjacencia[i].neighbors == NULL)
-            lista_adjacencia[i].neighbors = calloc(4*n, sizeof(uint));
+        if (lista[i].neighbors == NULL)
+            lista[i].neighbors = calloc(4*n, sizeof(uint));
 
         uint row_i = get_row(i, n); 
         uint col_i = get_col(i, n);
@@ -322,8 +286,8 @@ lista_adjacencia *cria_lista_adjacecia(uint n, uint k, casa *c){
             if (mat[j])
                 continue;
             
-            if (lista_adjacencia[j].neighbors == NULL)
-                lista_adjacencia[j].neighbors = calloc(4*n, sizeof(uint));
+            if (lista[j].neighbors == NULL)
+                lista[j].neighbors = calloc(4*n, sizeof(uint));
 
             // verifica se casa i é vizinha de casa j
             // 1. Verifica linha
@@ -331,58 +295,42 @@ lista_adjacencia *cria_lista_adjacecia(uint n, uint k, casa *c){
             // 3. Verifica diagonal secundaria
             // 4. Verifica diagonal principal
             if (row_i == row_j || col_i == col_j || row_i + col_i == row_j + col_j || row_i - col_i == row_j - col_j){
-                adiciona_vizinhos_lista(lista_adjacencia, i, j);
+                adiciona_vizinhos_lista(lista, i, j);
             }
         }
         
     }
 
     free(mat);
-    return lista_adjacencia;
+    return lista;
 }
 
 unsigned int *rainhas_ci(unsigned int n, unsigned int k, casa *c, unsigned int *r) {
     //int *mat_adj = cria_matriz_adjacencia(n, k, c);
-    lista_adjacencia *lista_adjacencia = cria_lista_adjacecia(n, k, c);
+    uint c_uns_count = 0;
+    lista_adjacencia *lista = cria_lista_adjacecia(n, k, c, &c_uns_count);
     //imrpime a lista
-    for (uint i = 0; i < n*n; i++){
-        printf("%d: ", i);
-        for (uint j = 0; j < lista_adjacencia[i].size; j++){
-            printf("%d ", lista_adjacencia[i].neighbors[j]);
-        }
-        printf("\n");
-    }
+    // for (uint i = 0; i < n*n; i++){
+    //     printf("%d: ", i);
+    //     for (uint j = 0; j < lista[i].size; j++){
+    //         printf("%d ", lista[i].neighbors[j]);
+    //     }
+    //     printf("\n");
+    // }
 
     uint t = n*n;
-#ifdef DEBUG_MAT
-    for (uint i = 0; i < t; i++){
-        for (uint j = i; j < t; j++){
-            printf("%d ", i == j ? 0 : mat_adj[i*t + j]);
-        }
-        printf("\n");
-    }
-#endif
-    // Vetor de situação dos vértices
-    // C[i] < 1: se vértice i não está no grafo
-    // C[i] == 1: se vértice i está no grafo
-    int *C = calloc(t, sizeof(int));
-    for (uint i = 0; i < t; i++)
-        C[i] = 1;
-    uint c_uns_count = t;
 
     // Vetor de vértices independentes
     uint *I = calloc(n, sizeof(uint));
     uint I_sz = 0;
 
-    //rainhas_ci_(n, mat_adj, t, I_sz, I, C, c_uns_count);
+    rainhas_ci_(n, t, I_sz, I, lista, c_uns_count);
     for (uint i = 0; i < n; i++){
         printf("%d ", I[i]);
         r[get_row(I[i], n)] = get_col(I[i], n)+1;
     }
     printf("\n");
-    //free(mat_adj);
-    free(lista_adjacencia); 
-    free(C);
+    libera_lista(lista, t);
     free(I);
     return r;
 }

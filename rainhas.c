@@ -13,6 +13,16 @@ typedef struct lista_adjacencia{
     int stack;   // pilha para backtracking
 } lista_adjacencia;
 
+// Tamanho da maior solução bt
+static uint maior_sol_bt_sz;
+// Vetor que guarda maior solução bt
+static uint *maior_sol_bt;
+
+// Tamanho da maior solução ci
+static uint maior_sol_ci_sz;
+// Vetor que guarda maior solução ci
+static uint *maior_sol_ci;
+
 
 //------------------------------------------------------------------------------
 // computa uma resposta para a instância (n,c) do problema das n rainhas 
@@ -28,10 +38,6 @@ typedef struct lista_adjacencia{
 //
 // devolve r
 
-// Tamanho da maior solução
-static uint maior_sol_sz;
-// Vetor que guarda maior solução
-static uint *maior_sol;
 
 // n: Tamanho do lado do tabuleiro
 // cols: vetor booleano que indica
@@ -60,9 +66,9 @@ static int rainhas_bt_(uint n, uint *cols, uint *diags2, uint *diags1, uint *mat
         // Verificar se a solução até agora é a maior pois pode ser que seja
         // e quando voltar a chamada recursiva ela não vai ser salva
         // vide caso 5 com diagonais cortadas para entender
-        if (sol_sz > maior_sol_sz){
-            maior_sol_sz = sol_sz;
-            memcpy(maior_sol, r, n*sizeof(uint));
+        if (sol_sz > maior_sol_bt_sz){
+            maior_sol_bt_sz = sol_sz;
+            memcpy(maior_sol_bt, r, n*sizeof(uint));
         }
         return sol_sz == n;
     }
@@ -70,7 +76,7 @@ static int rainhas_bt_(uint n, uint *cols, uint *diags2, uint *diags1, uint *mat
     // Nesse caso se não tiver mais linhas que somam
     // mais que a maior solução
     // OMG: A diferença que essa bomba faz, subiu o topo de uns 14 para 17
-    if (sol_sz + n-row <= maior_sol_sz)
+    if (sol_sz + n-row <= maior_sol_bt_sz)
         return 0;
 
     for (uint col = 0; col < n; col++){
@@ -100,9 +106,9 @@ static int rainhas_bt_(uint n, uint *cols, uint *diags2, uint *diags1, uint *mat
     /*     printf("%d ", r[i]); */
     /* printf("\n"); */
     // Salva maior sequencia até agora
-    if (sol_sz > maior_sol_sz){
-        maior_sol_sz = sol_sz;
-        memcpy(maior_sol, r, n*sizeof(uint));
+    if (sol_sz > maior_sol_bt_sz){
+        maior_sol_bt_sz = sol_sz;
+        memcpy(maior_sol_bt, r, n*sizeof(uint));
     }
     // Não conseguiu colocar nessa linha, tenta colocar na proxima
     // É nessario para casos de uma linha inteira coberta ou em que a recursão
@@ -139,16 +145,16 @@ unsigned int *rainhas_bt(unsigned int n, unsigned int k, casa *c, unsigned int *
 
     // Vetor de maior sequencia, guarda a maior sequencia
     // em caso de não ter solução o problema
-    maior_sol = calloc(n, (sizeof (uint)));
+    maior_sol_bt = calloc(n, (sizeof (uint)));
 
     if (!rainhas_bt_(n, cols, diags2, diags1, mat, 0, r, 0))
-        memcpy(r, maior_sol, n*sizeof(uint));
+        memcpy(r, maior_sol_bt, n*sizeof(uint));
 
     free(cols);
     free(diags1);
     free(diags2);
     free(mat);
-    free(maior_sol);
+    free(maior_sol_bt);
 
     return r;
 }
@@ -187,7 +193,8 @@ static uint adiciona_vizinhos(uint v, lista_adjacencia *c, uint c_uns_count){
     return c_uns_count;
 }
 
-static int random_avalible_vert(uint n, lista_adjacencia *c, uint *res){
+// Retorna primeiro vertice que está no grafo
+static int get_avalible_vert(uint n, lista_adjacencia *c, uint *res){
     for (uint i = 0; i < n; i++){
         if (c[i].stack == 1){
             *res = i;
@@ -203,30 +210,40 @@ static void libera_lista(lista_adjacencia* lista, uint t){
             free(lista[i].neighbors);
     free(lista);
 }
-static lista_adjacencia *copia_lista_sem_vertice(lista_adjacencia *lista, uint v, uint t){
-    lista_adjacencia *res = calloc(t, sizeof(lista_adjacencia));
-    for (uint i = 0; i < t; i++){
-        if (i != v){
-            res[i].neighbors = calloc(4*t, sizeof(uint));
-            for (uint j = 0; j < lista[i].size; j++)
-                if (lista[i].neighbors[j] != v)
-                    res[i].neighbors[res[i].size++] = lista[i].neighbors[j];
-        }
-    }
-    return res;
+
+inline static uint get_col(uint v_id, uint n){
+    return v_id%n;
+}
+inline static uint get_row(uint v_id, uint n){
+    return v_id/n;
+}
+
+static lista_adjacencia *adiciona_vizinhos_lista(lista_adjacencia* lista, uint i, uint j){
+    lista[i].neighbors[lista[i].size++] = j;
+    lista[j].neighbors[lista[j].size++] = i;
+
+    return lista;
 }
 static int rainhas_ci_(uint n, uint t, uint I_sz, uint *I, lista_adjacencia *c, uint c_uns_count){
-    if (I_sz == n)
+    if (I_sz == n){
+        memcpy(maior_sol_ci, I, n*sizeof(uint));
+        maior_sol_ci_sz = I_sz;
         return 1;
-    if (I_sz + c_uns_count < n)
+    }
+    if (I_sz + c_uns_count < maior_sol_ci_sz)
         return 0;
-    // Remove vertice aleatório v de C
+    // Remove vertice v de C
     uint v;
-    if (!random_avalible_vert(t, c, &v))
+    if (!get_avalible_vert(t, c, &v)){
+        // Se I for maior solução até agora
+        if (I_sz > maior_sol_ci_sz){
+            memcpy(maior_sol_ci, I, n*sizeof(uint));
+            maior_sol_ci_sz = I_sz;
+        }
         return 0;
+    }
     // Marca vertice como retirado
     c[v].stack = 0;
-    /* lista_adjacencia *c_copy = copia_lista_sem_vertice(c, v, t); */
     c_uns_count--;
 
     // Adiciona v em I
@@ -252,20 +269,6 @@ static int rainhas_ci_(uint n, uint t, uint I_sz, uint *I, lista_adjacencia *c, 
     c[v].stack = 1;
     return res;
     // ------------------- Backtracking -------------------
-}
-
-inline static uint get_col(uint v_id, uint n){
-    return v_id%n;
-}
-inline static uint get_row(uint v_id, uint n){
-    return v_id/n;
-}
-
-static lista_adjacencia *adiciona_vizinhos_lista(lista_adjacencia* lista, uint i, uint j){
-    lista[i].neighbors[lista[i].size++] = j;
-    lista[j].neighbors[lista[j].size++] = i;
-
-    return lista;
 }
 
 static lista_adjacencia *cria_lista_adjacecia(uint n, uint k, casa *c, uint *c_uns_count){
@@ -335,14 +338,20 @@ unsigned int *rainhas_ci(unsigned int n, unsigned int k, casa *c, unsigned int *
     // Vetor de vértices independentes
     uint *I = calloc(n, sizeof(uint));
     uint I_sz = 0;
+    maior_sol_ci = calloc(n, (sizeof (uint)));
+    maior_sol_ci_sz = 0;
 
-    rainhas_ci_(n, t, I_sz, I, lista, c_uns_count);
+    if (!rainhas_ci_(n, t, I_sz, I, lista, c_uns_count))
+        memcpy(I, maior_sol_ci, n*sizeof(uint));
+
     for (uint i = 0; i < n; i++){
         printf("%d ", I[i]);
-        r[get_row(I[i], n)] = get_col(I[i], n)+1;
+        if (I[i] != 0)
+            r[get_row(I[i], n)] = get_col(I[i], n)+1;
     }
     printf("\n");
     libera_lista(lista, t);
     free(I);
+    free(maior_sol_ci);
     return r;
 }

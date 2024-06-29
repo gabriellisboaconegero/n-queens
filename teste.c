@@ -144,11 +144,11 @@ int main (int argc, char **argv) {
 
     memset(resposta, 0, n*sizeof(unsigned int));
 
-    printf("grafo: ");
-    long int tempo_ci;
-    CRONOMETRA(rainhas_ci(n, k, proibido, resposta), tempo_ci);
-    printf("%ld\n", tempo_ci);
-    mostra_resposta(n, resposta, proibido, k);
+    /* printf("grafo: "); */
+    /* long int tempo_ci; */
+    /* CRONOMETRA(rainhas_ci(n, k, proibido, resposta), tempo_ci); */
+    /* printf("%ld\n", tempo_ci); */
+    /* mostra_resposta(n, resposta, proibido, k); */
 
     /* printf("%.2f\n", (double)tempo_ci/(double)tempo_bt); */
 

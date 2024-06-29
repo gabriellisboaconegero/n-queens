@@ -5,39 +5,35 @@ using namespace std;
  
 // Recursive Function to find the
 // Maximal Independent Vertex Set
-vector<int> graphSets(map<int, vector<int> > graph)
+int n;
+vector<int> maior;
+vector<int> *graphSets(map<int, vector<int> > graph, int n, vector<int> *I)
 {
+    if (int(I->size()) == n){
+        maior.assign(I->begin(), I->end());
+        return I;
+    }
+
+    // Branching and bound
+    if (I->size() + graph.size() < maior.size())
+        return NULL;
     // Base Case - Given Graph has no nodes
-    if (graph.size() == 0) {
-        return vector<int>();
+    if (graph.size() == 0){
+        if (I->size() > maior.size())
+            maior.assign(I->begin(), I->end());
+        return NULL;
     }
- 
-    // Base Case - Given Graph has 1 node
-    if (graph.size() == 1) {
-        vector<int> v;
-        for (auto const& element : graph) {
-            v.push_back(element.first);
-        }
-        return v;
-    }
+    if (I->size() > maior.size())
+        maior.assign(I->begin(), I->end());
  
     // Select a vertex from the graph
     int vCurrent = graph.begin()->first;
  
-    // Case 1 - Proceed removing the selected vertex
-    // from the Maximal Set
+    // copy graph
     map<int, vector<int> > graph2(graph);
- 
-    // Delete current vertex from the Graph
+    // remove vertex from graph
     graph2.erase(vCurrent);
- 
-    // Recursive call - Gets Maximal Set,
-    // assuming current Vertex not selected
-    vector<int> res1 = graphSets(graph2);
- 
-    // Case 2 - Proceed considering the selected vertex
-    // as part of the Maximal Set
- 
+
     // Loop through its neighbours
     for (auto v : graph.at(vCurrent)) {
         // Delete neighbor from the current subgraph
@@ -45,48 +41,62 @@ vector<int> graphSets(map<int, vector<int> > graph)
             graph2.erase(v);
         }
     }
- 
-    // This result set contains vCurrent,
-    // and the result of recursive call assuming neighbors
-    // of vCurrent are not selected
-    vector<int> res2;
-    res2.push_back(vCurrent);
-    vector<int> res2Sub = graphSets(graph2);
-    res2.insert(res2.end(), res2Sub.begin(), res2Sub.end());
- 
-    // Our final result is the one which is bigger, return
-    // it
-    if (res1.size() > res2.size()) {
+    // remove from original
+    graph.erase(vCurrent);
+
+    // insert vertex at I
+    I->push_back(vCurrent);
+    // Call recursive as vexter is in MIS
+    vector<int> *res1 = graphSets(graph2, n, I);
+    if (res1 != NULL)
         return res1;
+    I->pop_back();
+ 
+    // backtracking as vertex is not in MIS
+    return graphSets(graph, n, I);
+}
+
+int get_row(int n, int k){
+    return k/n;
+}
+int get_col(int n, int k){
+    return k%n;
+}
+
+void proibe_diagonais(vector<bool> &mat, int n){
+    for (int i = 0; i < n; i++){
+        mat[i*n + i] = 1;
+        mat[i*n + n - i - 1] = 1;
     }
-    return res2;
 }
  
 // Driver Code
 int main(int argc, char **argv)
 {
     if (argc < 2){
-        printf("Usage: %s <file_with_adjjency_mat>\n", argv[0]);
+        printf("Usage: %s <board_size>\n", argv[0]);
         return 1;
     }
-    // Defines edges
-    ifstream f(argv[1]);
+
     vector<vector<int>> E;
-    string line;
-    int row = 0;
-    int v;
-    int col = 0;
-    while (getline(f, line)){
-        istringstream iss(line);
-        col = 0;
-        while (iss >> v){
-            if (v && col >= row)
-                E.push_back(vector<int>{row, col});
-            col++;
+    n = atoi(argv[1]);
+    vector<bool> mat(n*n, 0);
+    proibe_diagonais(mat, n);
+
+    for (int i = 0; i < n*n; i++){
+        if (mat[i])
+            continue;
+        int row_i = get_row(n, i);
+        int col_i = get_col(n, i);
+        for (int j = i+1; j < n*n; j++){
+            int row_j = get_row(n, j);
+            int col_j = get_col(n, j);
+            if (mat[j])
+                continue;
+            if (row_i == row_j || col_i == col_j || row_i + col_i == row_j + col_j || row_i - col_i == row_j - col_j)
+                E.push_back(vector<int>{i, j});
         }
-        row++;
     }
- 
     map<int, vector<int> > graph;
  
     // Constructs Graph as a dictionary of the following
@@ -107,13 +117,38 @@ int main(int argc, char **argv)
  
     // Recursive call considering all vertices in the
     // maximum independent set
-    vector<int> maximalIndependentSet = graphSets(graph);
+    vector<int> I;
+    graphSets(graph, n, &I);
+    vector<int> *maximalIndependentSet = &maior;
  
     // Prints the Result
-    for (auto i : maximalIndependentSet) {
-        printf("(%d, %d) ", i/int(sqrt(row)), i%int(sqrt(row)));
+    for (auto i : *maximalIndependentSet)
+        printf("(%d, %d) ", get_row(n, i), get_col(n, i));
+    printf("\n");
+    int defer = 0;
+    for (int i=0; i<n; i++) {
+        for (int j=0; j<2*n; j++) {
+            defer = 0;
+            if (mat[i*n + j/2]){
+                printf("\x1b[1;31m█\x1b[m");
+                continue;
+            }
+            else
+                for (int r : *maximalIndependentSet){
+                    if ((i*n + j/2) == r){
+                        printf("\x1b[1;33m█\x1b[m");
+                        defer = 1;
+                        break;
+                    }
+                }
+            if (defer);
+            else if ((j/2 + i) % 2)
+                printf("\x1b[1;30m█\x1b[m");
+            else
+                printf("█");
+        }
+        printf("\n");
     }
-    cout << endl;
  
     return 0;
 }

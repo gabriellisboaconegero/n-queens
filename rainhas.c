@@ -226,7 +226,7 @@ static int rainhas_ci_(uint n, uint t, uint I_sz, uint *I, lista_adjacencia *c, 
         return 0;
     // Marca vertice como retirado
     c[v].stack = 0;
-    lista_adjacencia *c_copy = copia_lista_sem_vertice(c, v, t);
+    /* lista_adjacencia *c_copy = copia_lista_sem_vertice(c, v, t); */
     c_uns_count--;
 
     // Adiciona v em I

@@ -11,6 +11,7 @@ typedef struct lista_adjacencia{
     uint size;   // tamanho da lista de vizinhos
     uint *neighbors;     // lista de vizinhos
     int stack;   // pilha para backtracking
+    int grau;
 } lista_adjacencia;
 
 // Tamanho da maior solução bt
@@ -176,6 +177,7 @@ unsigned int *rainhas_bt(unsigned int n, unsigned int k, casa *c, unsigned int *
 static uint retira_vizinhos(uint v, lista_adjacencia *c, uint c_uns_count){
     for (uint i = 0; i < c[v].size ; i++){
         c[c[v].neighbors[i]].stack--;
+        c[c[v].neighbors[i]].grau--;
         if (c[i].stack == 1)
             c_uns_count--;
     }
@@ -187,6 +189,7 @@ static uint retira_vizinhos(uint v, lista_adjacencia *c, uint c_uns_count){
 static uint adiciona_vizinhos(uint v, lista_adjacencia *c, uint c_uns_count){
     for (uint i = 0; i < c[v].size; i++){
         c[c[v].neighbors[i]].stack++;
+        c[c[v].neighbors[i]].grau++;
         if (c[i].stack == 1)
             c_uns_count++;
     }
@@ -194,7 +197,7 @@ static uint adiciona_vizinhos(uint v, lista_adjacencia *c, uint c_uns_count){
 }
 
 // Retorna primeiro vertice que está no grafo
-static int get_avalible_vert(uint n, lista_adjacencia *c, uint *res){
+static int get_avalible_vert_primeiro(uint n, lista_adjacencia *c, uint *res){
     for (uint i = 0; i < n; i++){
         if (c[i].stack == 1){
             *res = i;
@@ -202,6 +205,30 @@ static int get_avalible_vert(uint n, lista_adjacencia *c, uint *res){
         }
     }
     return 0;
+}
+// Retorna vertice de menor grau que está no grafo
+static int get_avalible_vert_menor_grau(uint n, lista_adjacencia *c, uint *res){
+    // Nenhum vertice tem como ter grau maior que n (numero de vertices)
+    int menor_grau = n+1;
+    for (uint i = 0; i < n; i++){
+        if (c[i].stack == 1 && c[i].grau < menor_grau){
+            menor_grau = c[i].grau;
+            *res = i;
+        }
+    }
+    return menor_grau != n+1;
+}
+// Retorna vertice de maior grau que está no grafo
+static int get_avalible_vert_maior_grau(uint n, lista_adjacencia *c, uint *res){
+    // Nenhum vertice tem como ter grau maior que n (numero de vertices)
+    int maior_grau = -1;
+    for (uint i = 0; i < n; i++){
+        if (c[i].stack == 1 && c[i].grau > maior_grau){
+            maior_grau = c[i].grau;
+            *res = i;
+        }
+    }
+    return maior_grau != -1;
 }
 
 static void libera_lista(lista_adjacencia* lista, uint t){
@@ -224,14 +251,22 @@ static lista_adjacencia *adiciona_vizinhos_lista(lista_adjacencia* lista, uint i
 
     return lista;
 }
+
+// Variavel para testar heuristicas, ALTERAR para testar novas
+int (*get_avalible_vert)(uint, lista_adjacencia *, uint *) = get_avalible_vert_primeiro;
 static int rainhas_ci_(uint n, uint t, uint I_sz, uint *I, lista_adjacencia *c, uint c_uns_count){
     if (I_sz == n){
         memcpy(maior_sol_ci, I, n*sizeof(uint));
         maior_sol_ci_sz = I_sz;
         return 1;
     }
-    if (I_sz + c_uns_count < maior_sol_ci_sz)
+    if (I_sz + c_uns_count < maior_sol_ci_sz){
+        if (I_sz > maior_sol_ci_sz){
+            memcpy(maior_sol_ci, I, n*sizeof(uint));
+            maior_sol_ci_sz = I_sz;
+        }
         return 0;
+    }
     // Remove vertice v de C
     uint v;
     if (!get_avalible_vert(t, c, &v)){
@@ -313,7 +348,8 @@ static lista_adjacencia *cria_lista_adjacecia(uint n, uint k, casa *c, uint *c_u
                 adiciona_vizinhos_lista(lista, i, j);
             }
         }
-        
+        // Grau é quantos vizinhos tem
+        lista[i].grau = lista[i].size;
     }
 
     free(mat);
@@ -332,6 +368,9 @@ unsigned int *rainhas_ci(unsigned int n, unsigned int k, casa *c, unsigned int *
     //     }
     //     printf("\n");
     // }
+    /* for (uint i = 0; i < n*n; i++){ */
+    /*     printf("%d: %d\n", i, lista[i].size); */
+    /* } */
 
     uint t = n*n;
 

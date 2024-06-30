@@ -136,11 +136,11 @@ int main (int argc, char **argv) {
     // srand(1234);
     // proibe_random(n, proibido, k);
 
-    printf("backtracking: ");
-    long int tempo_bt;
-    CRONOMETRA(rainhas_bt(n, k, proibido, resposta), tempo_bt);
-    printf("%ld\n", tempo_bt);
-    mostra_resposta(n, resposta, proibido, k);
+    /* printf("backtracking: "); */
+    /* long int tempo_bt; */
+    /* CRONOMETRA(rainhas_bt(n, k, proibido, resposta), tempo_bt); */
+    /* printf("%ld\n", tempo_bt); */
+    /* mostra_resposta(n, resposta, proibido, k); */
 
     memset(resposta, 0, n*sizeof(unsigned int));
 

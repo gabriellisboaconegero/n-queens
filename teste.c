@@ -15,7 +15,7 @@ static void mostra_resposta(unsigned int n, unsigned int *r, casa *c, unsigned i
     for (unsigned int i=0; i<n; i++) {
         printf("%u, ", r[i]);
     }
-#ifdef DEBUG
+#if defined(DEBUG) || defined(DEBUG_IMG)
     printf("\n");
     for (unsigned int i=0; i<n; i++) {
         for (unsigned int j=0; j<2*n; j++) {
@@ -144,7 +144,7 @@ int main (int argc, char **argv) {
 
     memset(resposta, 0, n*sizeof(unsigned int));
 
-    printf("grafo: ");
+    printf("grafo: %d: ", n);
     long int tempo_ci;
     CRONOMETRA(rainhas_ci(n, k, proibido, resposta), tempo_ci);
     printf("%ld\n", tempo_ci);

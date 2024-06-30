@@ -42,6 +42,7 @@ CPPFLAGS = $(COMMON_FLAGS)
 .PHONY : all clean debug
 
 #------------------------------------------------------------------------------
+all: CFLAGS += -DDEBUG_IMG
 all : teste
 
 debug: CFLAGS += -DDEBUG -g

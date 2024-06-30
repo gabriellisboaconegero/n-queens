@@ -231,6 +231,72 @@ static int get_avalible_vert_maior_grau(uint n, lista_adjacencia *c, uint *res){
     return maior_grau != -1;
 }
 
+static int grau2(lista_adjacencia *c, uint v){
+    int res = 0;
+    for (uint i = 0; i < c[v].size; i++)
+        res += c[c[v].neighbors[i]].grau;
+   return res; 
+}
+
+static int grau3(lista_adjacencia *c, uint n, uint v){
+    int res = 0;
+    // Vetor que diz se essa casa pode ou não ser considerada na contagem
+    int *proibido = calloc(n, sizeof(int));
+    // Preenche com os vizinhos de v
+    for (uint i = 0; i < c[v].size; i++)
+        proibido[c[v].neighbors[i]] = 1;
+    for (uint i = 0; i < c[v].size; i++){
+        uint u = c[v].neighbors[i];
+        for (uint j = 0; j < c[u].size; j++){
+            if (!proibido[c[u].neighbors[j]])
+                res += c[c[u].neighbors[j]].grau;
+        }
+    }
+    free(proibido);
+    return res; 
+}
+// Retorna vertice que tem menor grau e maior grau2 e menor grau3
+//  grau2 é a soma dos graus do vizinhos de v
+//  grau3 é a soma dos graus do vizinhos dos vizinhos de v
+//      que não incluem os vizinhos de v
+static int get_avalible_vert_melhor_deg_3(uint n, lista_adjacencia *c, uint *res){
+    // Nenhum vertice tem como ter grau maior que n (numero de vertices)
+    int menor_grau = n+1;
+    int grau2_a, grau2_b;
+    for (uint i = 0; i < n; i++){
+        if (c[i].stack == 1){
+            // Se for grau menor ou
+            // se grau for igual escolhe o que tem mairo grau2
+            if ((c[i].grau < menor_grau) ||
+                (c[i].grau == menor_grau && (grau2_a=grau2(c, i)) > (grau2_b=grau2(c, *res)))||
+                (grau2_a == grau2_b && grau3(c, n, i) < grau3(c, n,*res))){
+                menor_grau = c[i].grau;
+                *res = i;
+            }
+        }
+    }
+    return menor_grau != n+1;
+}
+
+// Retorna vertice que tem menor grau e maior grau2
+//  grau2 é a soma dos graus do vizinhos de v
+static int get_avalible_vert_melhor_deg_2(uint n, lista_adjacencia *c, uint *res){
+    // Nenhum vertice tem como ter grau maior que n (numero de vertices)
+    int menor_grau = n+1;
+    for (uint i = 0; i < n; i++){
+        if (c[i].stack == 1){
+            // Se for grau menor ou
+            // se grau for igual escolhe o que tem mairo grau2
+            if ((c[i].grau < menor_grau) ||
+                (c[i].grau == menor_grau && grau2(c, i) > grau2(c, *res))){
+                menor_grau = c[i].grau;
+                *res = i;
+            }
+        }
+    }
+    return menor_grau != n+1;
+}
+
 static void libera_lista(lista_adjacencia* lista, uint t){
     for(uint i = 0; i < t; i++)
         if (lista[i].neighbors != NULL)
@@ -253,17 +319,29 @@ static lista_adjacencia *adiciona_vizinhos_lista(lista_adjacencia* lista, uint i
 }
 
 // Variavel para testar heuristicas, ALTERAR para testar novas
-int (*get_avalible_vert)(uint, lista_adjacencia *, uint *) = get_avalible_vert_primeiro;
+int (*get_avalible_vert)(uint, lista_adjacencia *, uint *) = get_avalible_vert_melhor_deg_3;
 static int rainhas_ci_(uint n, uint t, uint I_sz, uint *I, lista_adjacencia *c, uint c_uns_count){
     if (I_sz == n){
         memcpy(maior_sol_ci, I, n*sizeof(uint));
         maior_sol_ci_sz = I_sz;
+#ifdef DEBUG
+        printf("in 0 size(%d): ", I_sz);
+        for (uint i = 0; i < n; i++)
+            printf("%d ", I[i]);
+        printf("\n");
+#endif
         return 1;
     }
     if (I_sz + c_uns_count < maior_sol_ci_sz){
         if (I_sz > maior_sol_ci_sz){
             memcpy(maior_sol_ci, I, n*sizeof(uint));
             maior_sol_ci_sz = I_sz;
+#ifdef DEBUG
+            printf("in 1 size(%d): ", I_sz);
+            for (uint i = 0; i < n; i++)
+                printf("%d ", I[i]);
+            printf("\n");
+#endif
         }
         return 0;
     }
@@ -274,6 +352,12 @@ static int rainhas_ci_(uint n, uint t, uint I_sz, uint *I, lista_adjacencia *c, 
         if (I_sz > maior_sol_ci_sz){
             memcpy(maior_sol_ci, I, n*sizeof(uint));
             maior_sol_ci_sz = I_sz;
+#ifdef DEBUG
+            printf("in 2 size(%d): ", I_sz);
+            for (uint i = 0; i < n; i++)
+                printf("%d ", I[i]);
+            printf("\n");
+#endif
         }
         return 0;
     }
@@ -384,11 +468,15 @@ unsigned int *rainhas_ci(unsigned int n, unsigned int k, casa *c, unsigned int *
         memcpy(I, maior_sol_ci, n*sizeof(uint));
 
     for (uint i = 0; i < n; i++){
+#ifdef DEBUG
         printf("%d ", I[i]);
+#endif
         if (I[i] != 0)
             r[get_row(I[i], n)] = get_col(I[i], n)+1;
     }
+#ifdef DEBUG
     printf("\n");
+#endif
     libera_lista(lista, t);
     free(I);
     free(maior_sol_ci);

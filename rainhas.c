@@ -7,12 +7,15 @@
 
 
 // Estrutura de lista de adjacência
-typedef struct lista_adjacencia{
-    uint size;   // tamanho da lista de vizinhos
-    uint *neighbors;     // lista de vizinhos
-    int stack;   // pilha para backtracking
-} lista_adjacencia;
+typedef struct Vertice {
+	uint grau;	// Grau do vértice
+	uint *vizinhos;	// Lista de vizinhos
+} Vertice;
 
+typedef struct Grafo {
+	uint size;			// Tamanho do grafo (em vertices)
+	Vertice *vertices;	// Lista de vertices
+} Grafo;
 
 //------------------------------------------------------------------------------
 // computa uma resposta para a instância (n,c) do problema das n rainhas 
@@ -165,29 +168,7 @@ unsigned int *rainhas_bt(unsigned int n, unsigned int k, casa *c, unsigned int *
 // TODO: Ver problema de quando resposta tem tamanho 1, pode ser que pegue uma casa proibida (evitar isso)
 // TODO: altera para lista de adjacência - não insere vértices proibidos
 
-// Para todo vértice em C verifica se é vizinho de v e decrementa o grau
-// se grau < 0 então i não está no grafo
-static uint retira_vizinhos(uint v, lista_adjacencia *c, uint c_uns_count){
-    for (uint i = 0; i < c[v].size ; i++){
-        c[c[v].neighbors[i]].stack--;
-        if (c[i].stack == 1)
-            c_uns_count--;
-    }
-    return c_uns_count;
-}
-
-// Para todo vértice em C verifica se é vizinho de v e decrementa o grau
-// se grau > 0 então i está no grafo
-static uint adiciona_vizinhos(uint v, lista_adjacencia *c, uint c_uns_count){
-    for (uint i = 0; i < c[v].size; i++){
-        c[c[v].neighbors[i]].stack++;
-        if (c[i].stack == 1)
-            c_uns_count++;
-    }
-    return c_uns_count;
-}
-
-static int random_avalible_vert(uint n, lista_adjacencia *c, uint *res){
+static int retira_random_avalible_vert(uint n, Grafo *c, uint *res){
     for (uint i = 0; i < n; i++){
         if (c[i].stack == 1){
             *res = i;
@@ -197,59 +178,90 @@ static int random_avalible_vert(uint n, lista_adjacencia *c, uint *res){
     return 0;
 }
 
-static void libera_lista(lista_adjacencia* lista, uint t){
-    for(uint i = 0; i < t; i++)
-        if (lista[i].neighbors != NULL)
-            free(lista[i].neighbors);
-    free(lista);
+static void libera_grafo(Grafo* g){
+    for(uint i = 0; i < g->size; i++)
+        if (g->vertices[i].vizinhos != NULL)
+            free(g->vertices[i].vizinhos);
+    free(g->vertices);
+    free(g);
 }
-static lista_adjacencia *copia_lista_sem_vertice(lista_adjacencia *lista, uint v, uint t){
-    lista_adjacencia *res = calloc(t, sizeof(lista_adjacencia));
-    for (uint i = 0; i < t; i++){
-        if (i != v){
-            res[i].neighbors = calloc(4*t, sizeof(uint));
-            for (uint j = 0; j < lista[i].size; j++)
-                if (lista[i].neighbors[j] != v)
-                    res[i].neighbors[res[i].size++] = lista[i].neighbors[j];
-        }
+
+inline Vertice *get_vertice(Grafo *g, uint i){
+	return &(g->vertices[i]);
+}
+
+static copia_grafo(Grafo *g){
+    Grafo *res = calloc(g->size, sizeof(Grafo));
+    for (uint i = 0; i < g->size; i++){
+        Vertice *res_u = get_vertice(res, i);
+        Vertice *g_u = get_vertice(g, i);
+        res_u->vizinhos = calloc(4*g->size, sizeof(uint));
+        for (uint j = 0; j < g_u->grau; j++)
+            res_u->vizinhos[j] = g->vertices[i].vizinhos[j];
     }
+    res->size = g->size;
     return res;
 }
-static int rainhas_ci_(uint n, uint t, uint I_sz, uint *I, lista_adjacencia *c, uint c_uns_count){
+
+static uint *remove_vertice(Grafo *g, uint v_){
+    Vertice *v = get_vertice(g, v_);
+    g->size--;
+    for (uint i = 0; i < v->grau; i++){
+        Vertice *u = get_vertice(g, v->vizinhos[i]);
+        for (uint j = 0; j < u->grau-1; j++)
+            if (u->vizinhos[j] >= v){
+                u->vizinhos[j] = u->vizinhos[u->grau+1];
+                break;
+            }
+        u->grau--;
+    }
+
+    Vertice *v_vizinhanca = calloc(v->grau, sizeof(uint));
+    v_vizinhanca->grau = v->grau;
+    v_vizinhanca->vizinhos = v->vizinhos;
+
+    v->vizinhos = NULL;
+    v->grau = 0;
+
+    return v_vizinhanca;
+}
+
+static void remove_vizinhanca(Grafo *g, Vertice *v){
+    for (int i = 0; i < v->grau; i++){
+        remove_vertice(g, v->vizinhos[i]);
+    }
+
+    free(v->vizinhos);
+}
+
+static int rainhas_ci_(uint n, uint I_sz, uint *I, Grafo *c){
     if (I_sz == n)
         return 1;
-    if (I_sz + c_uns_count < n)
+    if (I_sz + c->size < n)
         return 0;
     // Remove vertice aleatório v de C
     uint v;
-    if (!random_avalible_vert(t, c, &v))
+    if (!retira_random_avalible_vert(c, &v))
         return 0;
     // Marca vertice como retirado
-    c[v].stack = 0;
-    lista_adjacencia *c_copy = copia_lista_sem_vertice(c, v, t);
-    c_uns_count--;
+    Grafo *c_copy = copia_grafo(c);
+    Vertice *v_vizinhanca = remove_vertice(c_copy, v);
+
+    // Chama recursivamente
+    int res = rainhas_ci_(n, I_sz, I, c_copy);
+    if (res){
+        libera_grafo(c_copy);
+        return 1;
+    }
 
     // Adiciona v em I
     I[I_sz++] = v;
-
-    // Remove vizinhos de v de C
-    c_uns_count = retira_vizinhos(v, c, c_uns_count);
-
-    // Chama recursivamente
-    if (rainhas_ci_(n, t, I_sz, I, c, c_uns_count))
-        return 1;
+    remove_vizinhanca(c_copy, v_vizinhanca);
 
     // ------------------- Backtracking -------------------
-    // Se não achou remove v de I
-    I[I_sz--] = 0;
-
-    // Adiciona vizinhos de v em C
-    c_uns_count = adiciona_vizinhos(v, c, c_uns_count);
-
     // Chama recursivamente
-    int res = rainhas_ci_(n, t, I_sz, I, c, c_uns_count);
-    // Volta o vertice retirado, pois na chamda anterior ele não está retirado
-    c[v].stack = 1;
+    res = rainhas_ci_(n, I_sz, I, c_copy);
+    libera_grafos(c_copy);
     return res;
     // ------------------- Backtracking -------------------
 }

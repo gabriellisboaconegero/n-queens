@@ -124,18 +124,18 @@ int main (int argc, char **argv) {
     casa *proibido = malloc(n*n*3*sizeof(casa));
 
     unsigned int k = 5*n;   //deve ser alterado conforme o tipo de proibição
-    proibe_diagonais(n, proibido); 
-    k = 2*n;
-    /* proibe_coluna(n, */
-    /* proibe_coluna(n, */
-    /* proibe_coluna(n, */
-    /* proibe_linha(n, */
-    /* proibe_linha(n, */
-    /* proibe_linha(n, proibido, */
-    /* 1), n), n/2+1), 1), n), n/2+1); 
-    k = 6*n;*/
-    // srand(1234);
-    // proibe_random(n, proibido, k);
+    // proibe_diagonais(n, proibido); 
+    // k = 2*n;
+    // proibe_coluna(n, 
+    // proibe_coluna(n, 
+    // proibe_coluna(n, 
+    // proibe_linha(n, 
+    // proibe_linha(n, 
+    // proibe_linha(n, proibido, 
+    // 1), n), n/2+1), 1), n), n/2+1); 
+    // k = 6*n;
+    srand(1234);
+    proibe_random(n, proibido, k);
 
     printf("backtracking: ");
     long int tempo_bt;

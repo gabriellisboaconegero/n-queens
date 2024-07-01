@@ -57,9 +57,9 @@ static uint *maior_sol;
 //     usar vetor rows_free_count que indica
 //          rows_free_count[i] == k: Quer dizer que a linha i tem k casas não livres (proibida ou atacada por rainha)
 // TODO: Refatorar código (utilizar strucst e mais funções de auxilio)
-static int rainhas_bt_(uint n, uint *cols, uint *diags2, uint *diags1, uint *mat, uint row, uint *r, uint sol_sz){
+static int rainhas_bt_(uint n, uint *cols, uint *diags2, uint *diags1, uint *mat, uint row, uint *r, uint sol_sz, uint *casas_livres_linha, uint num_linhas_livres){
     // Caso base
-    if (row == n){
+    if (num_linhas_livres == 0){
         // Verificar se a solução até agora é a maior pois pode ser que seja
         // e quando voltar a chamada recursiva ela não vai ser salva
         // vide caso 5 com diagonais cortadas para entender
@@ -73,7 +73,7 @@ static int rainhas_bt_(uint n, uint *cols, uint *diags2, uint *diags1, uint *mat
     // Nesse caso se não tiver mais linhas que somam
     // mais que a maior solução
     // OMG: A diferença que essa bomba faz, subiu o topo de uns 14 para 17
-    if (sol_sz + n-row <= maior_sol_sz)
+    if (sol_sz + num_linhas_livres <= maior_sol_sz)
         return 0;
 
     for (uint col = 0; col < n; col++){
@@ -90,14 +90,76 @@ static int rainhas_bt_(uint n, uint *cols, uint *diags2, uint *diags1, uint *mat
         // Coloca rainha na coluna e diagonais atual
         r[row] = col+1;
         cols[col] = diags2[row+col] = diags1[row-col+n-1] = 1;
+        uint temp_casas_livres_linha = casas_livres_linha[row];
+        casas_livres_linha[row] = 0;
+	    num_linhas_livres--;
+
+
+        //diminui o número de casas livres nas linhas atacadas
+        for (uint i = 0; i < n; i++){
+            if (casas_livres_linha[i] == 0)
+                continue;
+            
+            //verifica se a mesma coluna ta livre
+            if (mat[i*n + col] == 0){
+                mat[i*n + col] = 2;
+                casas_livres_linha[i]--;
+            }
+
+            //verifica se a linha i faz parte da diagonal principal de (row, col)
+            if (i >= row && col-i+row < n && mat[i*n + col-i+row] == 0){
+                mat[i*n + col-i+row] = 2;
+                casas_livres_linha[i]--;
+            }
+
+            //verifica se a linha i faz parte da diagonal secundária de (row, col)
+            if (i >= row && col+i-row < n && mat[i*n + col+i-row] == 0){
+                mat[i*n + col+i-row] = 2;
+                casas_livres_linha[i]--;
+            }
+
+            //verifica se a linha i ficou com casas livres
+            if (casas_livres_linha[i] == 0)
+                num_linhas_livres--;
+        }
 
         // Se achou retorna
-        if (rainhas_bt_(n, cols, diags2, diags1, mat, row+1, r, sol_sz+1) == 1)
+        if (rainhas_bt_(n, cols, diags2, diags1, mat, find_min_free_row(n, casas_livres_linha), r, sol_sz+1, casas_livres_linha, num_linhas_livres) == 1)
             return 1;
 
         r[row] = 0;
-        // Se não faz o backtaking
+        // Se não faz o backtracking
         cols[col] = diags2[row+col] = diags1[row-col+n-1] = 0;
+        casas_livres_linha[row] = temp_casas_livres_linha;
+	    num_linhas_livres++;
+
+        //adiciona o número de casas livres nas linhas atacadas
+        for (uint i = 0; i < n; i++){
+            if (casas_livres_linha[i] == 0)
+                continue;
+
+            //verifica se a mesma coluna ta livre
+            if (mat[i*n + col] == 2){
+                casas_livres_linha[i]++;
+                mat[i*n + col] = 0;
+            }
+            
+            //verifica se a linha i faz parte da diagonal principal de (row, col)
+            if (i >= row && col-i+row < n && mat[i*n + col-i+row] == 2){
+                mat[i*n + col-i+row] = 0;
+                casas_livres_linha[i]++;
+            }
+
+            //verifica se a linha i faz parte da diagonal secundária de (row, col)
+            if (i >= row && col+i-row < n && mat[i*n + col+i-row] == 2){
+                mat[i*n + col+i-row] = 0;
+                casas_livres_linha[i]++;
+            }
+
+            //verifica se a linha i ficou com casas livres
+            if (casas_livres_linha[i] > 0)
+                num_linhas_livres++;
+        }
     }
     /* for (int i = 0; i < n; i++) */
     /*     printf("%d ", r[i]); */
@@ -107,11 +169,28 @@ static int rainhas_bt_(uint n, uint *cols, uint *diags2, uint *diags1, uint *mat
         maior_sol_sz = sol_sz;
         memcpy(maior_sol, r, n*sizeof(uint));
     }
+
+    casas_livres_linha[row] = 0;
+    num_linhas_livres--;
     // Não conseguiu colocar nessa linha, tenta colocar na proxima
-    // É nessario para casos de uma linha inteira coberta ou em que a recursão
+    // É necessario para casos de uma linha inteira coberta ou em que a recursão
     // para sem chegar no caso base (row == n)
-    return rainhas_bt_(n, cols, diags2, diags1, mat, row+1, r, sol_sz);
+    return rainhas_bt_(n, cols, diags2, diags1, mat, find_min_free_row(n, casas_livres_linha), r, sol_sz, casas_livres_linha, num_linhas_livres);
 }
+
+// função para encontrar a linha com mais casas livres
+int find_min_free_row(uint n, uint *casas_livres_linha){
+    uint min = 10e5;
+    uint min_i = 0;
+    for (uint i = 0; i < n; i++){
+        if (casas_livres_linha[i] < min && casas_livres_linha[i] != 0){
+            min = casas_livres_linha[i];
+            min_i = i;
+        }
+    }
+    return min_i;
+}
+
 
 unsigned int *rainhas_bt(unsigned int n, unsigned int k, casa *c, unsigned int *r) {
     // Vetor de colunas:
@@ -144,7 +223,26 @@ unsigned int *rainhas_bt(unsigned int n, unsigned int k, casa *c, unsigned int *
     // em caso de não ter solução o problema
     maior_sol = calloc(n, (sizeof (uint)));
 
-    if (!rainhas_bt_(n, cols, diags2, diags1, mat, 0, r, 0))
+    // Vetor de casas livres na linha
+    uint *casas_livres_linha = calloc(n, sizeof(uint));
+    for (uint i = 0; i < n; i++)
+        casas_livres_linha[i] = n;
+    for (uint i = 0; i < k; i++){
+        //se for a casa do meio, ignora
+        if ((n%2 == 1) && (c[i].linha == n/2+1) && (c[i].coluna == n/2+1))
+            continue;
+        casas_livres_linha[c[i].linha-1]--;
+    }
+    //retira casa do meio agora
+    if (n%2 == 1)
+        casas_livres_linha[n/2]--;
+
+    uint num_linhas_livres = 0;
+    for (uint i = 0; i < n; i++)
+        if (casas_livres_linha[i] > 0)
+            num_linhas_livres++;
+
+    if (!rainhas_bt_(n, cols, diags2, diags1, mat, find_min_free_row(n, casas_livres_linha), r, 0, casas_livres_linha, num_linhas_livres))
         memcpy(r, maior_sol, n*sizeof(uint));
 
     free(cols);
@@ -168,7 +266,7 @@ unsigned int *rainhas_bt(unsigned int n, unsigned int k, casa *c, unsigned int *
 // TODO: Ver problema de quando resposta tem tamanho 1, pode ser que pegue uma casa proibida (evitar isso)
 // TODO: altera para lista de adjacência - não insere vértices proibidos
 
-static int retira_random_avalible_vert(uint n, Grafo *c, uint *res){
+/*static int retira_random_avalible_vert(uint n, Grafo *c, uint *res){
     for (uint i = 0; i < n; i++){
         if (c[i].stack == 1){
             *res = i;
@@ -358,3 +456,4 @@ unsigned int *rainhas_ci(unsigned int n, unsigned int k, casa *c, unsigned int *
     free(I);
     return r;
 }
+*/

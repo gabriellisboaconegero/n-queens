@@ -46,10 +46,8 @@ defer:
 // devolve &(proibido[2n]): o endereço a partir do qual proibir novas posições
 
 static casa *proibe_diagonais(unsigned int n, casa *proibido) {
-
     // proíbe todas as casas nas diagonais
     for(unsigned int i = 0, p = 1; i < 2 * n; i+=2, p++) {
-
         // diagonal "principal"
         proibido[i].linha = proibido[i].coluna = p;
 
@@ -57,6 +55,8 @@ static casa *proibe_diagonais(unsigned int n, casa *proibido) {
         proibido[i+1].linha = p;
         proibido[i+1].coluna = n - p + 1;
     }
+
+
 
     return proibido + 2*n;
 }
@@ -122,6 +122,7 @@ int main (int argc, char **argv) {
     unsigned int *resposta = malloc(n*sizeof(unsigned int));
 
     casa *proibido = malloc(n*n*3*sizeof(casa));
+
     unsigned int k = 5*n;   //deve ser alterado conforme o tipo de proibição
     proibe_diagonais(n, proibido); 
     k = 2*n;
@@ -142,7 +143,7 @@ int main (int argc, char **argv) {
     printf("%ld\n", tempo_bt);
     mostra_resposta(n, resposta, proibido, k);
 
-    memset(resposta, 0, n*sizeof(unsigned int));
+   /* memset(resposta, 0, n*sizeof(unsigned int));
 
     printf("grafo: ");
     long int tempo_ci;

@@ -32,7 +32,7 @@ typedef struct Grafo {
 // devolve r
 
 // Tamanho da maior solução
-static uint maior_sol_sz;
+static uint maior_sol_sz = 0;
 // Vetor que guarda maior solução
 static uint *maior_sol;
 
@@ -58,91 +58,121 @@ static uint *maior_sol;
 //          rows_free_count[i] == k: Quer dizer que a linha i tem k casas não livres (proibida ou atacada por rainha)
 // TODO: Refatorar código (utilizar strucst e mais funções de auxilio)
 
-static uint maior_sol_bt_sz = 0;
-static uint *maior_sol_bt;
-
-
-static int countRemainingValues(uint n, uint row, uint *cols, uint *diags2, uint *diags1, uint *mat) {
+static int col_restantes(uint n, uint row, uint *cols, uint *diags2, uint *diags1, uint *mat){
     int count = 0;
-    for (uint col = 0; col < n; col++) {
-        if (mat[row*n + col] == 0 &&
+    for (uint col = 0; col < n; col++){
+        if (mat[row*n+col] == 0 &&
             cols[col] == 0 &&
-            diags2[col + row] == 0 &&
-            diags1[row - col + n - 1] == 0) {
+            diags2[col+row] == 0 &&
+            diags1[row-col+n-1] == 0){
             count++;
         }
     }
     return count;
 }
 
-static int findNextRow(uint n, uint *cols, uint *diags2, uint *diags1, uint *mat, int *rows_used) {
-    uint min_remaining = n + 1;
-    int best_row = -1;
-    for (uint row = 0; row < n; row++) {
-        if (rows_used[row])
+static int prox_linha(uint n, uint *cols, uint *diags2, uint *diags1, uint *mat, int *linhas_usadas){
+    uint menor = n+1;
+    int melhor = -1;
+    for (uint row = 0; row < n; row++){
+        if (linhas_usadas[row])
             continue;
-        uint remaining = countRemainingValues(n, row, cols, diags2, diags1, mat);
-        if (remaining < min_remaining) {
-            min_remaining = remaining;
-            best_row = row;
+        uint num_col_res = col_restantes(n, row, cols, diags2, diags1, mat);
+        if (num_col_res < menor){
+            menor = num_col_res;
+            melhor = row;
         }
     }
-    return best_row;
+    return melhor;
 }
 
-static int rainhas_bt_(uint n, uint *cols, uint *diags2, uint *diags1, uint *mat, uint *r, uint sol_sz, int *rows_used) {
-    // Caso base: Se sol_sz é igual a n, encontramos uma solução completa
-    if (sol_sz > maior_sol_bt_sz) {
-        maior_sol_bt_sz = sol_sz;
-        memcpy(maior_sol_bt, r, n * sizeof(uint));
+static int rainhas_bt_(uint n, uint *cols, uint *diags2, uint *diags1, uint *mat, uint *r, uint sol_sz, int *linhas_usadas){
+    // verifica se eh a melhor solucao ate o momento (sol_sz se refere a solucao criada na recursao anterior, 
+    // por isso a comparacao feita logo no inicio).
+    if (sol_sz > maior_sol_sz){
+        maior_sol_sz = sol_sz;
+        memcpy(maior_sol, r, n * sizeof(uint));
     }
 
+    //verifica se a solucao atual eh a completa
     if (sol_sz == n)
         return 1;
 
-    int row = findNextRow(n, cols, diags2, diags1, mat, rows_used);
+    int row = prox_linha(n, cols, diags2, diags1, mat, linhas_usadas);
     if (row == -1)
         return 0;
 
-    for (uint col = 0; col < n; col++) {
-        if (mat[row*n + col] == 1 || cols[col] == 1 || diags2[col + row] == 1 || diags1[row - col + n - 1] == 1)
+    for (uint col = 0; col < n; col++){
+        // 1. Se for uma casa proibida
+        // 2. Se tiver uma rainha na coluna
+        // 3. Se tiver uma rainha na diagonal principal
+        // 4. Se tiver uma rainha na diagonal secundaria
+        if (mat[row*n+col] == 1   ||
+            cols[col] == 1          ||
+            diags2[col+row] == 1  ||
+            diags1[row-col+n-1] == 1)
             continue;
 
-        r[row] = col + 1;
-        cols[col] = diags2[row + col] = diags1[row - col + n - 1] = 1;
-        rows_used[row] = 1;
+        // Coloca rainha na coluna e diagonais atual
+        r[row] = col+1;
+        cols[col] = diags2[row+col] = diags1[row-col+n-1] = 1;
+        //atualiza vetor de linhas usadas
+        linhas_usadas[row] = 1;
 
-        if (rainhas_bt_(n, cols, diags2, diags1, mat, r, sol_sz + 1, rows_used) == 1)
+        // Se achou solucao retorna 1
+        if (rainhas_bt_(n, cols, diags2, diags1, mat, r, sol_sz+1, linhas_usadas) == 1)
             return 1;
 
         r[row] = 0;
-        cols[col] = diags2[row + col] = diags1[row - col + n - 1] = 0;
-        rows_used[row] = 0;
+        // Se não faz o backtracking
+        cols[col] = diags2[row+col] = diags1[row-col+n-1] = 0;
+        linhas_usadas[row] = 0;
     }
 
     return 0;
 }
 
-unsigned int *rainhas_bt(unsigned int n, unsigned int k, casa *c, unsigned int *r) {
-    uint *cols = calloc(n, sizeof(uint));
-    uint *mat = calloc(n * n, sizeof(uint));
+unsigned int *rainhas_bt(unsigned int n, unsigned int k, casa *c, unsigned int *r){
+    // Vetor de colunas:
+    //      cols[i] == 1: se tem rainha na coluna i
+    //      cols[i] == 0: c.c
+    uint *cols = calloc(n, (sizeof (uint)));
+
+    // Matriz de casas proibidas (indexada por i*n+j):
+    //      mat[i*n+j] == 1: se casa é proibida
+    //      mat[i*n+j] == 0: c.c
+    uint *mat  = calloc(n*n, (sizeof (uint)));
     for (uint i = 0; i < k; i++)
-        mat[(c[i].linha - 1) * n + c[i].coluna - 1] = 1;
+        mat[(c[i].linha-1)*n+c[i].coluna-1] = 1;
 
-    uint *diags2 = calloc(2 * n, sizeof(uint));
-    uint *diags1 = calloc(2 * n, sizeof(uint));
-    maior_sol_bt = calloc(n, sizeof(uint));
-    int *rows_used = calloc(n, sizeof(int));
+    // Vetor de diagonal secundaria:
+    //      diags2[i] == 1: Se tem rainha na diagonal secundaria
+    //      diags2[i] == 0: c.c
+    // Fórmula de indexação (dado linha i e coluna j):
+    //      diag = i+j
+    uint *diags2  = calloc(2*n, (sizeof (uint)));
 
-    rainhas_bt_(n, cols, diags2, diags1, mat, r, 0, rows_used);
-    memcpy(r, maior_sol_bt, n * sizeof(uint));
+    // Vetor de diagonal principal:
+    //      diags1[i] == 1: Se tem rainha na diagonal principal
+    //      diags1[i] == 0: c.c
+    // Fórmula de indexação (dado linha i e coluna j):
+    //      diag = i-j+n-1
+    uint *diags1  = calloc(2*n, (sizeof (uint)));
+
+    // Vetor de maior sequencia, guarda a maior sequencia
+    // em caso de não ter solução o problema
+    maior_sol = calloc(n, (sizeof (uint)));
+    int *linhas_usadas = calloc(n, sizeof(int));
+
+    rainhas_bt_(n, cols, diags2, diags1, mat, r, 0, linhas_usadas);
+    memcpy(r, maior_sol, n * sizeof(uint));
 
     free(cols);
     free(diags1);
     free(diags2);
     free(mat);
-    free(maior_sol_bt);
-    free(rows_used);
+    free(maior_sol);
+    free(linhas_usadas);
 
     return r;
 }
@@ -161,7 +191,7 @@ unsigned int *rainhas_bt(unsigned int n, unsigned int k, casa *c, unsigned int *
 // TODO: Implementar função para retirar vértice v de C
 // TODO: Fazer rainhas_ci_ funcionar para respostas menores que n (ou seja respostas onde tem rainhas faltando)
 // TODO: Ver problema de quando resposta tem tamanho 1, pode ser que pegue uma casa proibida (evitar isso)
-// TODO: altera para lista de adjacência - não insere vértices proibidos
+// TODO: altera para lista de adjacência-não insere vértices proibidos
 
 /*static int retira_random_avalible_vert(uint n, Grafo *c, uint *res){
     for (uint i = 0; i < n; i++){
@@ -232,7 +262,7 @@ static void remove_vizinhanca(Grafo *g, Vertice *v){
 static int rainhas_ci_(uint n, uint I_sz, uint *I, Grafo *c){
     if (I_sz == n)
         return 1;
-    if (I_sz + c->size < n)
+    if (I_sz+c->size < n)
         return 0;
     // Remove vertice aleatório v de C
     uint v;
@@ -282,7 +312,7 @@ static lista_adjacencia *cria_lista_adjacecia(uint n, uint k, casa *c, uint *c_u
     uint *mat = calloc(size_list, sizeof(uint));
     for (uint i = 0; i < k; i++)
         // c[i].linha-1 pois é indexado começando em 1
-        mat[(c[i].linha-1)*n + c[i].coluna-1] = 1;
+        mat[(c[i].linha-1)*n+c[i].coluna-1] = 1;
 
     
     struct lista_adjacencia *lista = calloc(size_list, sizeof(struct lista_adjacencia));
@@ -299,7 +329,7 @@ static lista_adjacencia *cria_lista_adjacecia(uint n, uint k, casa *c, uint *c_u
 
         uint row_i = get_row(i, n); 
         uint col_i = get_col(i, n);
-        for (uint j = i + 1; j < n*n; j++){
+        for (uint j = i+1; j < n*n; j++){
             uint row_j = get_row(j, n);
             uint col_j = get_col(j, n);
             if (mat[j])
@@ -313,7 +343,7 @@ static lista_adjacencia *cria_lista_adjacecia(uint n, uint k, casa *c, uint *c_u
             // 2. Verifica coluna
             // 3. Verifica diagonal secundaria
             // 4. Verifica diagonal principal
-            if (row_i == row_j || col_i == col_j || row_i + col_i == row_j + col_j || row_i - col_i == row_j - col_j){
+            if (row_i == row_j || col_i == col_j || row_i+col_i == row_j+col_j || row_i-col_i == row_j-col_j){
                 adiciona_vizinhos_lista(lista, i, j);
             }
         }
@@ -324,7 +354,7 @@ static lista_adjacencia *cria_lista_adjacecia(uint n, uint k, casa *c, uint *c_u
     return lista;
 }
 
-unsigned int *rainhas_ci(unsigned int n, unsigned int k, casa *c, unsigned int *r) {
+unsigned int *rainhas_ci(unsigned int n, unsigned int k, casa *c, unsigned int *r){
     //int *mat_adj = cria_matriz_adjacencia(n, k, c);
     uint c_uns_count = 0;
     lista_adjacencia *lista = cria_lista_adjacecia(n, k, c, &c_uns_count);

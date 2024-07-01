@@ -71,6 +71,7 @@ static int col_restantes(uint n, uint row, uint *cols, uint *diags2, uint *diags
     return count;
 }
 
+//TODO: não pegar linha vazia
 static int prox_linha(uint n, uint *cols, uint *diags2, uint *diags1, uint *mat, int *linhas_usadas){
     uint menor = n+1;
     int melhor = -1;
@@ -129,7 +130,10 @@ static int rainhas_bt_(uint n, uint *cols, uint *diags2, uint *diags1, uint *mat
         linhas_usadas[row] = 0;
     }
 
-    return 0;
+    linhas_usadas[row] = 1;
+    int res = rainhas_bt_(n, cols, diags2, diags1, mat, r, sol_sz, linhas_usadas);
+    linhas_usadas[row] = 0;
+    return res;
 }
 
 unsigned int *rainhas_bt(unsigned int n, unsigned int k, casa *c, unsigned int *r){

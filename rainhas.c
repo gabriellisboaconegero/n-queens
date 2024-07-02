@@ -52,14 +52,10 @@ static uint *maior_sol;
 // row: Linha do tabuleiro atual da recursão
 // r: Vetor de solução atual da recusão
 // sol_sz: tamanho da solução atual da recursão
-// TODO: Implementar otimização de achar primeira linha livre
-//     (evita ficar verificando a linha inteira até perceber que ela não tem espaço livre)
-//     usar vetor rows_free_count que indica
-//          rows_free_count[i] == k: Quer dizer que a linha i tem k casas não livres (proibida ou atacada por rainha)
 // TODO: Refatorar código (utilizar strucst e mais funções de auxilio) 
 
-static int col_restantes(uint n, uint row, uint *cols, uint *diags2, uint *diags1, uint *mat){
-    int count = 0;
+static uint col_restantes(uint n, uint row, uint *cols, uint *diags2, uint *diags1, uint *mat){
+    uint count = 0;
     for (uint col = 0; col < n; col++){
         if (mat[row*n+col] == 0 &&
             cols[col] == 0 &&
@@ -71,10 +67,9 @@ static int col_restantes(uint n, uint row, uint *cols, uint *diags2, uint *diags
     return count;
 }
 
-//TODO: não pegar linha vazia
-static int prox_linha(uint n, uint *cols, uint *diags2, uint *diags1, uint *mat, int *linhas_usadas){
+static uint prox_linha(uint n, uint *cols, uint *diags2, uint *diags1, uint *mat, int *linhas_usadas){
     uint menor = n+1;
-    int melhor = -1;
+    uint melhor = n+1;
     for (uint row = 0; row < n; row++){
         if (linhas_usadas[row])
             continue;
@@ -87,8 +82,8 @@ static int prox_linha(uint n, uint *cols, uint *diags2, uint *diags1, uint *mat,
     return melhor;
 }
 
-static int quantidade_linhas_usadas(uint n, int *linhas_usadas){
-    int count = 0;
+static uint quantidade_linhas_usadas(uint n, int *linhas_usadas){
+    uint count = 0;
     for (uint i = 0; i < n; i++)
         if (linhas_usadas[i])
             count++;
@@ -109,8 +104,8 @@ static int rainhas_bt_(uint n, uint *cols, uint *diags2, uint *diags1, uint *mat
     if (sol_sz + n-quantidade_linhas_usadas(n, linhas_usadas) <= maior_sol_sz)
         return 0;
 
-    int row = prox_linha(n, cols, diags2, diags1, mat, linhas_usadas);
-    if (row == -1)
+    uint row = prox_linha(n, cols, diags2, diags1, mat, linhas_usadas);
+    if (row == n+1)
         return 0;
 
     for (uint col = 0; col < n; col++){

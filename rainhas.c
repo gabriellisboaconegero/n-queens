@@ -6,14 +6,7 @@
 #define MAX(a, b) ((a) > (b) ? (a) : (b))
 
 
-// Estrutura de lista de adjacência
-typedef struct lista_adjacencia{
-    uint size;   // tamanho da lista de vizinhos
-    uint *neighbors;     // lista de vizinhos
-    int stack;   // pilha para backtracking
-    int grau;
-} lista_adjacencia;
-
+// Vetor para guardar solução da maior resposta
 static uint maior_sol_sz;
 static uint *maior_sol;
 
@@ -31,44 +24,71 @@ static uint *maior_sol;
 //
 // devolve r
 
-
-// n: Tamanho do lado do tabuleiro
-// cols: vetor booleano que indica
-//      cols[i] == 1: Tem rainha nessa coluna
-//      cols[i] == 0: c.c
-// diags2: vetor booleano que indica
-//      diags2[i] == 1: Tem rainha nessa diagona secundaria
-//      diags2[i] == 0: c.c
-// diags1: vetor booleano que indica
-//      diags1[i] == 1: Tem rainha nessa diagona principal
-//      diags1[i] == 0: c.c
-// mat: Matriz booleana que indica
-//      mat[i][j] == 1: casa (i,j) é proibida
-//      mat[i][j] == 0: c.c
-// row: Linha do tabuleiro atual da recursão
-// r: Vetor de solução atual da recusão
-// sol_sz: tamanho da solução atual da recursão
 // TODO: Refatorar código (utilizar strucst e mais funções de auxilio)
-static uint col_restantes(uint n, uint row, uint *cols, uint *diags2, uint *diags1, uint *mat){
+// Estrutura de lista de adjacência
+typedef struct lista_adjacencia{
+    uint size;   // tamanho da lista de vizinhos
+    uint *neighbors;     // lista de vizinhos
+    int stack;   // pilha para backtracking
+    int grau;
+} lista_adjacencia;
+
+typedef struct backtraking_params {
+    // n: Tamanho do lado do tabuleiro
+    // cols: vetor booleano que indica
+    //      cols[i] == 1: Tem rainha nessa coluna
+    //      cols[i] == 0: c.c
+    // diags2: vetor booleano que indica
+    //      diags2[i] == 1: Tem rainha nessa diagona secundaria
+    //      diags2[i] == 0: c.c
+    //      Fórmula de indexação (dado linha i e coluna j):
+    //          diag = i+j
+    // diags1: vetor booleano que indica
+    //      diags1[i] == 1: Tem rainha nessa diagona principal
+    //      diags1[i] == 0: c.c
+    //      Fórmula de indexação (dado linha i e coluna j):
+    //          diag = i-j+n-1
+    // mat: Matriz booleana que indica
+    //      mat[i*n+j] == 1: casa (i,j) é proibida
+    //      mat[i*n+j] == 0: c.c
+    // row: Linha do tabuleiro atual da recursão
+    // r: Vetor de solução atual da recusão
+    // sol_sz: tamanho da solução atual da recursão
+    uint n;
+    uint *cols;
+    uint *diags2;
+    uint *diags1;
+    uint *mat;
+    uint *sol;
+    uint sol_sz;
+    int *linhas_usadas;
+} backtraking_params;
+
+// Calcula quantas colunas estão livres para colocar uma rainha
+static uint col_restantes(backtraking_params *bt, uint row){
+    uint n = bt->n;
     uint count = 0;
     for (uint col = 0; col < n; col++){
-        if (mat[row*n+col] == 0 &&
-            cols[col] == 0 &&
-            diags2[col+row] == 0 &&
-            diags1[row-col+n-1] == 0){
+        if (bt->mat[row*n+col] == 0 &&
+            bt->cols[col] == 0 &&
+            bt->diags2[col+row] == 0 &&
+            bt->diags1[row-col+n-1] == 0){
             count++;
         }
     }
     return count;
 }
 
-static uint prox_linha(uint n, uint *cols, uint *diags2, uint *diags1, uint *mat, int *linhas_usadas){
+// Pega próxima linha com menor número de casas livres para colocar rainhas
+// OBS: Pode pegar linhas totalmente proibidas, está correto
+static uint prox_linha(backtraking_params *bt){
+    uint n = bt->n;
     uint menor = n+1;
     uint melhor = n+1;
     for (uint row = 0; row < n; row++){
-        if (linhas_usadas[row])
+        if (bt->linhas_usadas[row])
             continue;
-        uint num_col_res = col_restantes(n, row, cols, diags2, diags1, mat);
+        uint num_col_res = col_restantes(bt, row);
         if (num_col_res < menor){
             menor = num_col_res;
             melhor = row;
@@ -77,6 +97,7 @@ static uint prox_linha(uint n, uint *cols, uint *diags2, uint *diags1, uint *mat
     return melhor;
 }
 
+// Calcula quantas linhas ainda já foram usadas
 static uint quantidade_linhas_usadas(uint n, int *linhas_usadas){
     uint count = 0;
     for (uint i = 0; i < n; i++)
@@ -85,99 +106,114 @@ static uint quantidade_linhas_usadas(uint n, int *linhas_usadas){
     return count;
 }
 
-static int rainhas_bt_(uint n, uint *cols, uint *diags2, uint *diags1, uint *mat, uint *r, uint sol_sz, int *linhas_usadas){
+// Retorna se casa não está livre para colocar rainha
+//     1: Se casa (row, col) não está livre
+//     0: c.c
+static inline int is_unavalible_tile(backtraking_params *bt, uint row, uint col){
+    // 1. Se for uma casa proibida
+    // 2. Se tiver uma rainha na coluna
+    // 3. Se tiver uma rainha na diagonal principal
+    // 4. Se tiver uma rainha na diagonal secundaria
+    uint n = bt->n;
+    return  bt->mat[row*n+col] == 1     ||
+            bt->cols[col] == 1          ||
+            bt->diags2[col+row] == 1    ||
+            bt->diags1[row-col+n-1] == 1;
+}
+
+// Marca que rainha foi colocada na casa (row, col)
+static inline void place_queen(backtraking_params *bt, uint row, uint col){
+    uint n = bt->n;
+    bt->sol[row] = col+1;
+    bt->cols[col] = bt->diags2[row+col] = bt->diags1[row-col+n-1] = 1;
+    bt->linhas_usadas[row] = 1;
+    bt->sol_sz++;
+}
+
+// Desmarca que rainha foi colocada na casa (row, col)
+static inline void unplace_queen(backtraking_params *bt, uint row, uint col){
+    uint n = bt->n;
+    bt->sol_sz--;
+    bt->linhas_usadas[row] = 0;
+    bt->cols[col] = bt->diags2[row+col] = bt->diags1[row-col+n-1] = 0;
+    bt->sol[row] = 0;
+}
+
+static int rainhas_bt_recursive(backtraking_params *bt){
     // verifica se eh a melhor solucao ate o momento (sol_sz se refere a solucao criada na recursao anterior, 
     // por isso a comparacao feita logo no inicio).
-    if (sol_sz > maior_sol_sz){
-        maior_sol_sz = sol_sz;
-        memcpy(maior_sol, r, n * sizeof(uint));
+    uint n = bt->n;
+    if (bt->sol_sz > maior_sol_sz){
+        maior_sol_sz = bt->sol_sz;
+        memcpy(maior_sol, bt->sol, n * sizeof(uint));
     }
 
-    //verifica se a solucao atual eh a completa
-    if (sol_sz == n)
+    // verifica se a solucao atual eh a completa
+    if (bt->sol_sz == n)
         return 1;
-    if (sol_sz + n-quantidade_linhas_usadas(n, linhas_usadas) <= maior_sol_sz)
+    // Se a solução atual mais a quantidade de linhas não usadas não passar
+    // da maior solução então corta busca
+    if (bt->sol_sz + n-quantidade_linhas_usadas(n, bt->linhas_usadas) <= maior_sol_sz)
         return 0;
 
-    uint row = prox_linha(n, cols, diags2, diags1, mat, linhas_usadas);
+    // Pega próxima linha para tentar colocar rainha
+    uint row = prox_linha(bt);
     if (row == n+1)
         return 0;
 
+    // Itera sobre as colunas da linha
     for (uint col = 0; col < n; col++){
-        // 1. Se for uma casa proibida
-        // 2. Se tiver uma rainha na coluna
-        // 3. Se tiver uma rainha na diagonal principal
-        // 4. Se tiver uma rainha na diagonal secundaria
-        if (mat[row*n+col] == 1   ||
-            cols[col] == 1          ||
-            diags2[col+row] == 1  ||
-            diags1[row-col+n-1] == 1)
+        if (is_unavalible_tile(bt, row, col))
             continue;
 
         // Coloca rainha na coluna e diagonais atual
-        r[row] = col+1;
-        cols[col] = diags2[row+col] = diags1[row-col+n-1] = 1;
-        //atualiza vetor de linhas usadas
-        linhas_usadas[row] = 1;
+        place_queen(bt, row, col);
 
         // Se achou solucao retorna 1
-        if (rainhas_bt_(n, cols, diags2, diags1, mat, r, sol_sz+1, linhas_usadas) == 1)
+        if (rainhas_bt_recursive(bt) == 1)
             return 1;
 
-        r[row] = 0;
         // Se não faz o backtracking
-        cols[col] = diags2[row+col] = diags1[row-col+n-1] = 0;
-        linhas_usadas[row] = 0;
+        unplace_queen(bt, row, col);
     }
 
-    linhas_usadas[row] = 1;
-    int res = rainhas_bt_(n, cols, diags2, diags1, mat, r, sol_sz, linhas_usadas);
-    linhas_usadas[row] = 0;
+    // Se não conseguiu solução na linha marca como usada
+    bt->linhas_usadas[row] = 1;
+    int res = rainhas_bt_recursive(bt);
+    // Volta linha, pois está voltando do backtracking
+    bt->linhas_usadas[row] = 0;
     return res;
 }
 
 unsigned int *rainhas_bt(unsigned int n, unsigned int k, casa *c, unsigned int *r){
-    // Vetor de colunas:
-    //      cols[i] == 1: se tem rainha na coluna i
-    //      cols[i] == 0: c.c
-    uint *cols = calloc(n, (sizeof (uint)));
+    backtraking_params bt;
 
-    // Matriz de casas proibidas (indexada por i*n+j):
-    //      mat[i*n+j] == 1: se casa é proibida
-    //      mat[i*n+j] == 0: c.c
-    uint *mat  = calloc(n*n, (sizeof (uint)));
+    bt.n      = n;
+    bt.sol_sz = 0;
+
+    // Aloca memória
+    bt.cols          = calloc(n,   sizeof (uint));
+    bt.mat           = calloc(n*n, sizeof (uint));
+    bt.diags2        = calloc(2*n, sizeof (uint));
+    bt.diags1        = calloc(2*n, sizeof (uint));
+    bt.sol           = calloc(n,   sizeof (uint));
+    bt.linhas_usadas = calloc(n,   sizeof (int));
+    maior_sol        = calloc(n,   sizeof (uint));
     for (uint i = 0; i < k; i++)
-        mat[(c[i].linha-1)*n+c[i].coluna-1] = 1;
+        bt.mat[(c[i].linha-1)*n+c[i].coluna-1] = 1;
 
-    // Vetor de diagonal secundaria:
-    //      diags2[i] == 1: Se tem rainha na diagonal secundaria
-    //      diags2[i] == 0: c.c
-    // Fórmula de indexação (dado linha i e coluna j):
-    //      diag = i+j
-    uint *diags2  = calloc(2*n, (sizeof (uint)));
-
-    // Vetor de diagonal principal:
-    //      diags1[i] == 1: Se tem rainha na diagonal principal
-    //      diags1[i] == 0: c.c
-    // Fórmula de indexação (dado linha i e coluna j):
-    //      diag = i-j+n-1
-    uint *diags1  = calloc(2*n, (sizeof (uint)));
-
-    // Vetor de maior sequencia, guarda a maior sequencia
-    // em caso de não ter solução o problema
-    maior_sol = calloc(n, (sizeof (uint)));
-    int *linhas_usadas = calloc(n, sizeof(int));
-
-    rainhas_bt_(n, cols, diags2, diags1, mat, r, 0, linhas_usadas);
+    // Chama função recursiva
+    rainhas_bt_recursive(&bt);
     memcpy(r, maior_sol, n * sizeof(uint));
 
-    free(cols);
-    free(diags1);
-    free(diags2);
-    free(mat);
+    // Libera memória
+    free(bt.cols);
+    free(bt.mat);
+    free(bt.diags2);
+    free(bt.diags1);
+    free(bt.sol);
+    free(bt.linhas_usadas);
     free(maior_sol);
-    free(linhas_usadas);
-
     return r;
 }
 //------------------------------------------------------------------------------

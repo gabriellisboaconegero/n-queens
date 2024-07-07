@@ -517,12 +517,11 @@ unsigned int *rainhas_ci(unsigned int n, unsigned int k, casa *c, unsigned int *
     if (!rainhas_ci_recursivo(n, t, I_sz, I, lista))
         memcpy(I, maior_sol, n*sizeof(uint));
 
-    for (uint i = 0; i < n; i++){
+    for (uint i = 0; i < maior_sol_sz; i++){
 #ifdef DEBUG
         printf("%d ", I[i]);
 #endif
-        if (I[i] != 0)
-            r[get_row(I[i], n)] = get_col(I[i], n)+1;
+        r[get_row(I[i], n)] = get_col(I[i], n)+1;
     }
 #ifdef DEBUG
     printf("\n");

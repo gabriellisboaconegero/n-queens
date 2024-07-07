@@ -40,6 +40,21 @@ encontrada e verificar se a solução já é n. O controle de colunas, diagonais
 feito através de vetores auxiliares.
 
 # CONJUNTO INDEPENDENTE
+
+## Estruturas de Dados
+typedef struct lista_adjacencia{
+    tam: tamanho da lista de vizinhos
+    vizinhos: vetor de vizinhos
+    ref_count: pilha para backtracking
+    grau: grau do vertice
+} lista_adjacencia;
+	
+## Funções principais
+- rainhas_ci: Função principal que inicializa as estruturas necessárias e chama a função de conjunto independente.
+- rainhas_ci_recursivo: Função recursiva que tenta posicionar rainhas no tabuleiro,
+  respeitando as restrições e casas proibidas.
+- get_avalible_vert_melhor_deg_2: Função que retorna o vertice que possui menor grau e maior segundo grau.
+
 O grafo utilizado para a implementação do algoritmo se baseia em considerar cada casa do tabuleiro como um vértice,
 com arestas que incidem entre casas onde duas rainhas conseguiriam se atacar. A estrutura utilizada para representar
 tal grafo é uma lista de adjacência, na qual as casas proibidas não possuem vizinhos. Dessa maneira, se busca o maior
@@ -62,32 +77,37 @@ valor menor que 1 então ele já foi retirado -`ref_count`+1 vezes do grafo e n�
 escolher um vértice, calcular grau2 e grau3, verificar se casa é valida, etc. Isso pois é usando `ref_count` que é determinado se
 o grafo contém aquele vértice ou não.
 
+Utilizar o `ref_count` remove a cópia constante dos conjuntos e reestruturação do grafo, pois a estrutura do grafo em si não é
+alterada, apenas a forma que os vértices são vistos é.
+
 # CASOS DE TESTE
 Foram utilizados os seguintes casos de teste para garantir um bom desempenho do algoritmo para diferentes casas proibidas:
-1. Diagonais: Proíbe as diagonais do tabuleiro. Segue uma tabela para esse teste
-entrada	backtracking	CI
-10	141		4411
-15	1020		9333
-20	1482		20167
-25	4738		1164999
-30	1084		95507
-35	904		80401
-40	9318		1775138
-45	2539		2860773
-50	4227		-
-55	15992		66615
-60	21128		-
-65	14158		-
-70	4517		-
-75	122575		1025336
-OBS: O algoritmo de backtracking funcionou ainda para entradas 100-170 em tempo razoável (menos de um minuto) para esse teste.
-OBS: '-' significa que demorou mais de um minuto para rodar.
+1. Diagonais: Proíbe as diagonais do tabuleiro. Segue uma tabela para esse teste:
+
+		entrada	backtracking	CI
+		10	141		4411
+		15	1020		9333
+		20	1482		20167
+		25	4738		1164999
+		30	1084		95507
+		35	904		80401
+		40	9318		1775138
+		45	2539		2860773
+		50	4227		-
+		55	15992		66615
+		60	21128		-
+		65	14158		-
+		70	4517		-
+		75	122575		1025336
+		OBS: O algoritmo de backtracking funcionou ainda para entradas 100-170 em tempo razoável (menos de um minuto) para esse teste.
+		OBS: '-' significa que demorou mais de um minuto para rodar.
+
 2. Linhas: Proíbe linhas inteiras do tabuleiro.
 3. Colunas: Proíbe colunas inteiras.
 4. Rand: Proíbe aleatoriamente 5*n casas do tabuleiro.
 5. Janela: Proíbe uma linha e uma coluna do centro do tabuleiro, além das primeiras e últimas linhas e colunas.
 
-Vale resaltar o comportamento dos testes 2 e 3. Onde os valores resultantes do backtracking são maiores (bem maiores) que o
+Vale ressaltar o comportamento do teste 3. Onde os valores resultantes do backtracking são muito maiores que o
 de conjunto independente para tamanho de tabuleiros maiores que 7. Isso acontece pois o algoritmo de CI consegue fazer a poda
 de acordo com a quantidade de linhas e colunas que ainda tem casa livres para colocar, enquanto o backtracking faz apenas para
 linhas livres.

@@ -232,15 +232,16 @@ typedef struct lista_adjacencia{
 } lista_adjacencia;
 
 // ------------------- Utils -------------------
+// retorna a linha do tabuleiro de um certo vertice
 inline static uint get_col(uint v_id, uint n){
     return v_id%n;
 }
-
+// retorna a coluna do tabuleiro de um certo vertice
 inline static uint get_row(uint v_id, uint n){
     return v_id/n;
 }
 
-// função que calcula o número de linhas restantes através do gr	afo
+// função que calcula o número de linhas restantes através do grafo
 static uint linhas_restantes(lista_adjacencia *c, uint n){
     uint *linha_ocupada = calloc(n, sizeof(uint));
     uint count = 0;
@@ -258,7 +259,6 @@ static uint linhas_restantes(lista_adjacencia *c, uint n){
     return count;
 }
 // função que calcula o número de linhas restantes através do grafo
-
 static uint colunas_restantes(lista_adjacencia *c, uint n){
     uint *coluna_ocupada = calloc(n, sizeof(uint));
     uint count = 0;
@@ -380,7 +380,7 @@ static lista_adjacencia *adiciona_vizinhos_lista(lista_adjacencia* lista, uint i
     return lista;
 }
 
-static lista_adjacencia *cria_lista_adjacecia(uint n, uint k, casa *c){
+static lista_adjacencia *cria_lista_adjacencia(uint n, uint k, casa *c){
     uint size_list = n*n;
 
     // Matriz para dizer se casa é proibida ou não
@@ -504,7 +504,7 @@ static int rainhas_ci_recursivo(uint n, uint t, uint I_sz, uint *I, lista_adjace
 }
 
 unsigned int *rainhas_ci(unsigned int n, unsigned int k, casa *c, unsigned int *r) {
-    lista_adjacencia *lista = cria_lista_adjacecia(n, k, c);
+    lista_adjacencia *lista = cria_lista_adjacencia(n, k, c);
 
     uint t = n*n;
 

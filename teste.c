@@ -123,8 +123,8 @@ int main (int argc, char **argv) {
 
     casa *proibido = malloc(n*n*3*sizeof(casa));
     unsigned int k = 5*n;   //deve ser alterado conforme o tipo de proibição
-    // proibe_diagonais(n, proibido); 
-    // k = 2*n;
+    proibe_diagonais(n, proibido); 
+    k = 2*n;
     // proibe_coluna(n, 
     // proibe_coluna(n, 
     // proibe_coluna(n, 
@@ -137,14 +137,14 @@ int main (int argc, char **argv) {
     // k = n;
     // proibe_linha(n, proibido, n/2+1);
     // k = n;
-    srand(1234);
-    proibe_random(n, proibido, k);
+    //srand(1234);
+    //proibe_random(n, proibido, k);
 
-    // printf("backtracking: ");
-    // long int tempo_bt;
-    // CRONOMETRA(rainhas_bt(n, k, proibido, resposta), tempo_bt);
-    // printf("%ld\n", tempo_bt);
-    // mostra_resposta(n, resposta, proibido, k);
+    printf("backtracking: ");
+    long int tempo_bt;
+    CRONOMETRA(rainhas_bt(n, k, proibido, resposta), tempo_bt);
+    printf("%ld\n", tempo_bt);
+    mostra_resposta(n, resposta, proibido, k);
 
     memset(resposta, 0, n*sizeof(unsigned int));
 

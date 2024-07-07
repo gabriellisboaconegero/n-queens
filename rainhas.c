@@ -230,47 +230,55 @@ typedef struct lista_adjacencia{
     int ref_count;   // pilha para backtracking
     uint grau;
 } lista_adjacencia;
-static void retira_vizinhos(uint v, lista_adjacencia *c){
-    for (uint i = 0; i < c[v].tam ; i++){
-        uint u = c[v].vizinhos[i];
-        c[u].ref_count--;
-        c[u].grau--;
-    }
+
+// ------------------- Utils -------------------
+inline static uint get_col(uint v_id, uint n){
+    return v_id%n;
 }
 
-// Para todo vértice em C verifica se é vizinho de v e decrementa o grau
-// se grau > 0 então i está no grafo
-static void adiciona_vizinhos(uint v, lista_adjacencia *c){
-    for (uint i = 0; i < c[v].tam; i++){
-        uint u = c[v].vizinhos[i];
-        c[u].ref_count++;
-        c[u].grau++;
-    }
+inline static uint get_row(uint v_id, uint n){
+    return v_id/n;
 }
 
-// Retorna primeiro vertice que está no grafo
-static int get_avalible_vert_primeiro(uint n, lista_adjacencia *c, uint *res){
-    for (uint i = 0; i < n; i++){
+// função que calcula o número de linhas restantes através do gr	afo
+static uint linhas_restantes(lista_adjacencia *c, uint n){
+    uint *linha_ocupada = calloc(n, sizeof(uint));
+    uint count = 0;
+    for (uint i = 0; i < n*n; i++){
         if (c[i].ref_count == 1){
-            *res = i;
-            return 1;
+            uint row = get_row(i, n);
+            if (!linha_ocupada[row]){
+                linha_ocupada[row] = 1;
+                count++;
+            }
         }
     }
-    return 0;
+
+    free(linha_ocupada);
+    return count;
 }
-// Retorna vertice de menor grau que está no grafo
-static int get_avalible_vert_menor_grau(uint n, lista_adjacencia *c, uint *res){
-    // Nenhum vertice tem como ter grau maior que n (numero de vertices)
-    uint menor_grau = n+1;
-    for (uint i = 0; i < n; i++){
-        if (c[i].ref_count == 1 && c[i].grau < menor_grau){
-            menor_grau = c[i].grau;
-            *res = i;
+// função que calcula o número de linhas restantes através do grafo
+
+static uint colunas_restantes(lista_adjacencia *c, uint n){
+    uint *coluna_ocupada = calloc(n, sizeof(uint));
+    uint count = 0;
+    for (uint i = 0; i < n*n; i++){
+        if (c[i].ref_count == 1){
+            uint col = get_col(i, n);
+            if (!coluna_ocupada[col]){
+                coluna_ocupada[col] = 1;
+                count++;
+            }
         }
     }
-    return menor_grau != n+1;
+
+    free(coluna_ocupada);
+    return count;
 }
 
+// ------------------- Utils -------------------
+// ------------------- Heurísticas -------------------
+// grau2 é a soma dos graus do vizinhos de v
 static uint grau2(lista_adjacencia *c, uint v){
     uint res = 0;
     for (uint i = 0; i < c[v].tam; i++)
@@ -278,6 +286,9 @@ static uint grau2(lista_adjacencia *c, uint v){
    return res; 
 }
 
+//  grau3 é a soma dos graus do vizinhos dos vizinhos de v
+//      que não incluem os vizinhos de v
+#ifdef DEBUG
 static uint grau3(lista_adjacencia *c, uint n, uint v){
     uint res = 0;
     // Vetor que diz se essa casa pode ou não ser considerada na contagem
@@ -295,10 +306,52 @@ static uint grau3(lista_adjacencia *c, uint n, uint v){
     free(proibido);
     return res; 
 }
+#endif
+
+// Retorna vertice que tem menor grau e maior grau2
+static int get_avalible_vert_melhor_deg_2(uint n, lista_adjacencia *c, uint *res){
+    // Nenhum vertice tem como ter grau maior que n (numero de vertices)
+    uint menor_grau = n+1;
+    for (uint i = 0; i < n; i++){
+        if (c[i].ref_count == 1){
+            // Se for grau menor ou
+            // se grau for igual escolhe o que tem mairo grau2
+            if ((c[i].grau < menor_grau) ||
+                (c[i].grau == menor_grau && grau2(c, i) > grau2(c, *res))){
+                menor_grau = c[i].grau;
+                *res = i;
+            }
+        }
+    }
+    return menor_grau != n+1;
+}
+
+#ifdef DEBUG
+// Retorna primeiro vertice que está no grafo
+static int get_avalible_vert_primeiro(uint n, lista_adjacencia *c, uint *res){
+    for (uint i = 0; i < n; i++){
+        if (c[i].ref_count == 1){
+            *res = i;
+            return 1;
+        }
+    }
+    return 0;
+}
+
+// Retorna vertice de menor grau que está no grafo
+static int get_avalible_vert_menor_grau(uint n, lista_adjacencia *c, uint *res){
+    // Nenhum vertice tem como ter grau maior que n (numero de vertices)
+    uint menor_grau = n+1;
+    for (uint i = 0; i < n; i++){
+        if (c[i].ref_count == 1 && c[i].grau < menor_grau){
+            menor_grau = c[i].grau;
+            *res = i;
+        }
+    }
+    return menor_grau != n+1;
+}
+
 // Retorna vertice que tem menor grau e maior grau2 e menor grau3
-//  grau2 é a soma dos graus do vizinhos de v
-//  grau3 é a soma dos graus do vizinhos dos vizinhos de v
-//      que não incluem os vizinhos de v
 static int get_avalible_vert_melhor_deg_3(uint n, lista_adjacencia *c, uint *res){
     // Nenhum vertice tem como ter grau maior que n (numero de vertices)
     uint menor_grau = n+1;
@@ -317,130 +370,14 @@ static int get_avalible_vert_melhor_deg_3(uint n, lista_adjacencia *c, uint *res
     }
     return menor_grau != n+1;
 }
-
-// Retorna vertice que tem menor grau e maior grau2
-//  grau2 é a soma dos graus do vizinhos de v
-static int get_avalible_vert_melhor_deg_2(uint n, lista_adjacencia *c, uint *res){
-    // Nenhum vertice tem como ter grau maior que n (numero de vertices)
-    uint menor_grau = n+1;
-    for (uint i = 0; i < n; i++){
-        if (c[i].ref_count == 1){
-            // Se for grau menor ou
-            // se grau for igual escolhe o que tem mairo grau2
-            if ((c[i].grau < menor_grau) ||
-                (c[i].grau == menor_grau && grau2(c, i) > grau2(c, *res))){
-                menor_grau = c[i].grau;
-                *res = i;
-            }
-        }
-    }
-    return menor_grau != n+1;
-}
-
-static void libera_lista(lista_adjacencia* lista, uint t){
-    for(uint i = 0; i < t; i++)
-        if (lista[i].vizinhos != NULL)
-            free(lista[i].vizinhos);
-    free(lista);
-}
-
-inline static uint get_col(uint v_id, uint n){
-    return v_id%n;
-}
-inline static uint get_row(uint v_id, uint n){
-    return v_id/n;
-}
-
+#endif
+// ------------------- Heurísticas -------------------
+// ------------------- Lista de adjacência -------------------
 static lista_adjacencia *adiciona_vizinhos_lista(lista_adjacencia* lista, uint i, uint j){
     lista[i].vizinhos[lista[i].tam++] = j;
     lista[j].vizinhos[lista[j].tam++] = i;
 
     return lista;
-}
-
-// função que calcula o número de linhas restantes através do grafo
-static uint linhas_restantes(lista_adjacencia *c, uint n){
-    uint *linha_ocupada = calloc(n, sizeof(uint));
-    uint count = 0;
-    for (uint i = 0; i < n*n; i++){
-        if (c[i].ref_count == 1){
-            uint row = get_row(i, n);
-            if (!linha_ocupada[row]){
-                linha_ocupada[row] = 1;
-                count++;
-            }
-        }
-    }
-
-    free(linha_ocupada);
-    return count;
-}
-// função que calcula o número de linhas restantes através do grafo
-static uint colunas_restantes(lista_adjacencia *c, uint n){
-    uint *coluna_ocupada = calloc(n, sizeof(uint));
-    uint count = 0;
-    for (uint i = 0; i < n*n; i++){
-        if (c[i].ref_count == 1){
-            uint col = get_col(i, n);
-            if (!coluna_ocupada[col]){
-                coluna_ocupada[col] = 1;
-                count++;
-            }
-        }
-    }
-
-    free(coluna_ocupada);
-    return count;
-}
-
-// Variavel para testar heuristicas, ALTERAR para testar novas
-int (*get_avalible_vert)(uint, lista_adjacencia *, uint *) = get_avalible_vert_melhor_deg_2;
-static int rainhas_ci_recursivo(uint n, uint t, uint I_sz, uint *I, lista_adjacencia *c){
-    if (I_sz == n){
-        memcpy(maior_sol, I, n*sizeof(uint));
-        maior_sol_sz = I_sz;
-        return 1;
-    }
-    // Se não tiver linhas ou colunas suficientes para passar da maior solução
-    if (I_sz + MIN(colunas_restantes(c, n), linhas_restantes(c, n)) <= maior_sol_sz){
-        return 0;
-    }
-    // Remove vertice v de C
-    uint v;
-    if (!get_avalible_vert(t, c, &v)){
-        // Se I for maior solução até agora
-        if (I_sz > maior_sol_sz){
-            memcpy(maior_sol, I, n*sizeof(uint));
-            maior_sol_sz = I_sz;
-        }
-        return 0;
-    }
-    // Marca vertice como retirado
-    c[v].ref_count = 0;
-
-    // Adiciona v em I
-    I[I_sz++] = v;
-
-    // Remove vizinhos de v de C
-    retira_vizinhos(v, c);
-
-    // Chama recursivamente
-    if (rainhas_ci_recursivo(n, t, I_sz, I, c))
-        return 1;
-
-    // ------------------- Backtracking -------------------
-    // Se não achou remove v de I
-    I[I_sz--] = 0;
-
-    // Adiciona vizinhos de v em C
-    adiciona_vizinhos(v, c);
-
-    // Chama recursivamente
-    int res = rainhas_ci_recursivo(n, t, I_sz, I, c);
-    // Volta o vertice retirado, pois na chamda anterior ele não está retirado
-    c[v].ref_count = 1;
-    return res;
-    // ------------------- Backtracking -------------------
 }
 
 static lista_adjacencia *cria_lista_adjacecia(uint n, uint k, casa *c){
@@ -492,19 +429,82 @@ static lista_adjacencia *cria_lista_adjacecia(uint n, uint k, casa *c){
     return lista;
 }
 
+static void libera_lista(lista_adjacencia* lista, uint t){
+    for(uint i = 0; i < t; i++)
+        if (lista[i].vizinhos != NULL)
+            free(lista[i].vizinhos);
+    free(lista);
+}
+
+static void retira_vizinhos(uint v, lista_adjacencia *c){
+    for (uint i = 0; i < c[v].tam ; i++){
+        uint u = c[v].vizinhos[i];
+        c[u].ref_count--;
+        c[u].grau--;
+    }
+}
+// Para todo vértice em C verifica se é vizinho de v e decrementa o grau
+// se grau > 0 então i está no grafo
+static void adiciona_vizinhos(uint v, lista_adjacencia *c){
+    for (uint i = 0; i < c[v].tam; i++){
+        uint u = c[v].vizinhos[i];
+        c[u].ref_count++;
+        c[u].grau++;
+    }
+}
+// ------------------- Lista de adjacência -------------------
+
+// Variavel para testar heuristicas, ALTERAR para testar novas
+int (*get_avalible_vert)(uint, lista_adjacencia *, uint *) = get_avalible_vert_melhor_deg_2;
+static int rainhas_ci_recursivo(uint n, uint t, uint I_sz, uint *I, lista_adjacencia *c){
+    if (I_sz == n){
+        memcpy(maior_sol, I, n*sizeof(uint));
+        maior_sol_sz = I_sz;
+        return 1;
+    }
+    // Se não tiver linhas ou colunas suficientes para passar da maior solução
+    if (I_sz + MIN(colunas_restantes(c, n), linhas_restantes(c, n)) <= maior_sol_sz)
+        return 0;
+    // Remove vertice v de C
+    uint v;
+    if (!get_avalible_vert(t, c, &v)){
+        // Se I for maior solução até agora
+        if (I_sz > maior_sol_sz){
+            memcpy(maior_sol, I, n*sizeof(uint));
+            maior_sol_sz = I_sz;
+        }
+        return 0;
+    }
+    // Marca vertice como retirado
+    c[v].ref_count = 0;
+
+    // Adiciona v em I
+    I[I_sz++] = v;
+
+    // Remove vizinhos de v de C
+    retira_vizinhos(v, c);
+
+    // Chama recursivamente
+    if (rainhas_ci_recursivo(n, t, I_sz, I, c))
+        return 1;
+
+    // ------------------- Backtracking -------------------
+    // Se não achou remove v de I
+    I[I_sz--] = 0;
+
+    // Adiciona vizinhos de v em C
+    adiciona_vizinhos(v, c);
+
+    // Chama recursivamente
+    int res = rainhas_ci_recursivo(n, t, I_sz, I, c);
+    // Volta o vertice retirado, pois na chamda anterior ele não está retirado
+    c[v].ref_count = 1;
+    return res;
+    // ------------------- Backtracking -------------------
+}
+
 unsigned int *rainhas_ci(unsigned int n, unsigned int k, casa *c, unsigned int *r) {
     lista_adjacencia *lista = cria_lista_adjacecia(n, k, c);
-    //imrpime a lista
-    // for (uint i = 0; i < n*n; i++){
-    //     printf("%d: ", i);
-    //     for (uint j = 0; j < lista[i].tam; j++){
-    //         printf("%d ", lista[i].vizinhos[j]);
-    //     }
-    //     printf("\n");
-    // }
-    /* for (uint i = 0; i < n*n; i++){ */
-    /*     printf("%d: %d\n", i, lista[i].tam); */
-    /* } */
 
     uint t = n*n;
 

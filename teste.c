@@ -125,22 +125,24 @@ int main (int argc, char **argv) {
     unsigned int k = 5*n;   //deve ser alterado conforme o tipo de proibição
     proibe_diagonais(n, proibido); 
     k = 2*n;
-    /* proibe_coluna(n, */
-    /* proibe_coluna(n, */
-    /* proibe_coluna(n, */
-    /* proibe_linha(n, */
-    /* proibe_linha(n, */
-    /* proibe_linha(n, proibido, */
-    /* 1), n), n/2+1), 1), n), n/2+1); 
-    k = 6*n;*/
+    // proibe_coluna(n, 
+    // proibe_coluna(n, 
+    // proibe_coluna(n, 
+    // proibe_linha(n, 
+    // proibe_linha(n, 
+    // proibe_linha(n, proibido, 
+    // 1), n), n/2+1), 1), n), n/2+1); 
+    // k = 6*n;
+    // proibe_coluna(n, proibido, n/2+1);
+    // k = n;
     // srand(1234);
     // proibe_random(n, proibido, k);
 
-    printf("backtracking: ");
-    long int tempo_bt;
-    CRONOMETRA(rainhas_bt(n, k, proibido, resposta), tempo_bt);
-    printf("%ld\n", tempo_bt);
-    mostra_resposta(n, resposta, proibido, k);
+    // printf("backtracking: ");
+    // long int tempo_bt;
+    // CRONOMETRA(rainhas_bt(n, k, proibido, resposta), tempo_bt);
+    // printf("%ld\n", tempo_bt);
+    // mostra_resposta(n, resposta, proibido, k);
 
     memset(resposta, 0, n*sizeof(unsigned int));
 
@@ -150,7 +152,7 @@ int main (int argc, char **argv) {
     printf("%ld\n", tempo_ci);
     mostra_resposta(n, resposta, proibido, k);
 
-    /* printf("%.2f\n", (double)tempo_ci/(double)tempo_bt); */
+    // printf("%.2f\n", (double)tempo_ci/(double)tempo_bt);
 
     free(proibido);
     free(resposta);

@@ -4,7 +4,7 @@
 #include <stdio.h>
 #define uint unsigned int
 #define MAX(a, b) ((a) > (b) ? (a) : (b))
-
+#define MIN(a, b) ((a) < (b) ? (a) : (b))
 
 // Vetor para guardar solução da maior resposta
 static uint maior_sol_sz;
@@ -23,15 +23,6 @@ static uint *maior_sol;
 //      r[i] = 0     indica que não há rainha nenhuma na linha i+1
 //
 // devolve r
-
-// TODO: Refatorar código (utilizar strucst e mais funções de auxilio)
-// Estrutura de lista de adjacência
-typedef struct lista_adjacencia{
-    uint size;   // tamanho da lista de vizinhos
-    uint *neighbors;     // lista de vizinhos
-    int stack;   // pilha para backtracking
-    int grau;
-} lista_adjacencia;
 
 typedef struct backtraking_params {
     // n: Tamanho do lado do tabuleiro
@@ -52,7 +43,7 @@ typedef struct backtraking_params {
     //      mat[i*n+j] == 1: casa (i,j) é proibida
     //      mat[i*n+j] == 0: c.c
     // row: Linha do tabuleiro atual da recursão
-    // r: Vetor de solução atual da recusão
+    // sol: Vetor de solução atual da recursão
     // sol_sz: tamanho da solução atual da recursão
     uint n;
     uint *cols;
@@ -109,20 +100,20 @@ static uint quantidade_linhas_usadas(uint n, int *linhas_usadas){
 // Retorna se casa não está livre para colocar rainha
 //     1: Se casa (row, col) não está livre
 //     0: c.c
-static inline int is_unavalible_tile(backtraking_params *bt, uint row, uint col){
+static inline int eh_casa_livre(backtraking_params *bt, uint row, uint col){
     // 1. Se for uma casa proibida
     // 2. Se tiver uma rainha na coluna
     // 3. Se tiver uma rainha na diagonal principal
     // 4. Se tiver uma rainha na diagonal secundaria
     uint n = bt->n;
-    return  bt->mat[row*n+col] == 1     ||
+    return  !(bt->mat[row*n+col] == 1     ||
             bt->cols[col] == 1          ||
             bt->diags2[col+row] == 1    ||
-            bt->diags1[row-col+n-1] == 1;
+            bt->diags1[row-col+n-1] == 1);
 }
 
 // Marca que rainha foi colocada na casa (row, col)
-static inline void place_queen(backtraking_params *bt, uint row, uint col){
+static inline void coloca_rainha(backtraking_params *bt, uint row, uint col){
     uint n = bt->n;
     bt->sol[row] = col+1;
     bt->cols[col] = bt->diags2[row+col] = bt->diags1[row-col+n-1] = 1;
@@ -131,7 +122,7 @@ static inline void place_queen(backtraking_params *bt, uint row, uint col){
 }
 
 // Desmarca que rainha foi colocada na casa (row, col)
-static inline void unplace_queen(backtraking_params *bt, uint row, uint col){
+static inline void retira_rainha(backtraking_params *bt, uint row, uint col){
     uint n = bt->n;
     bt->sol_sz--;
     bt->linhas_usadas[row] = 0;
@@ -139,7 +130,7 @@ static inline void unplace_queen(backtraking_params *bt, uint row, uint col){
     bt->sol[row] = 0;
 }
 
-static int rainhas_bt_recursive(backtraking_params *bt){
+static int rainhas_bt_recursivo(backtraking_params *bt){
     // verifica se eh a melhor solucao ate o momento (sol_sz se refere a solucao criada na recursao anterior, 
     // por isso a comparacao feita logo no inicio).
     uint n = bt->n;
@@ -163,23 +154,23 @@ static int rainhas_bt_recursive(backtraking_params *bt){
 
     // Itera sobre as colunas da linha
     for (uint col = 0; col < n; col++){
-        if (is_unavalible_tile(bt, row, col))
+        if (!eh_casa_livre(bt, row, col))
             continue;
 
         // Coloca rainha na coluna e diagonais atual
-        place_queen(bt, row, col);
+        coloca_rainha(bt, row, col);
 
         // Se achou solucao retorna 1
-        if (rainhas_bt_recursive(bt) == 1)
+        if (rainhas_bt_recursivo(bt) == 1)
             return 1;
 
         // Se não faz o backtracking
-        unplace_queen(bt, row, col);
+        retira_rainha(bt, row, col);
     }
 
     // Se não conseguiu solução na linha marca como usada
     bt->linhas_usadas[row] = 1;
-    int res = rainhas_bt_recursive(bt);
+    int res = rainhas_bt_recursivo(bt);
     // Volta linha, pois está voltando do backtracking
     bt->linhas_usadas[row] = 0;
     return res;
@@ -203,7 +194,7 @@ unsigned int *rainhas_bt(unsigned int n, unsigned int k, casa *c, unsigned int *
         bt.mat[(c[i].linha-1)*n+c[i].coluna-1] = 1;
 
     // Chama função recursiva
-    rainhas_bt_recursive(&bt);
+    rainhas_bt_recursivo(&bt);
     memcpy(r, maior_sol, n * sizeof(uint));
 
     // Libera memória
@@ -225,40 +216,42 @@ unsigned int *rainhas_bt(unsigned int n, unsigned int k, casa *c, unsigned int *
 
 // TODO: Mudar c_uns_count para int
 // TODO: Implementar função para retirar vértice v de C
-// TODO: Fazer rainhas_ci_ funcionar para respostas menores que n (ou seja respostas onde tem rainhas faltando)
+// TODO: Fazer rainhas_ci_recursivo funcionar para respostas menores que n (ou seja respostas onde tem rainhas faltando)
 // TODO: Ver problema de quando resposta tem tamanho 1, pode ser que pegue uma casa proibida (evitar isso)
 // TODO: altera para lista de adjacência - não insere vértices proibidos
 
 // Para todo vértice em C verifica se é vizinho de v e decrementa o grau
 // se grau < 0 então i não está no grafo
-static uint retira_vizinhos(uint v, lista_adjacencia *c, uint c_uns_count){
-    for (uint i = 0; i < c[v].size ; i++){
-        uint u = c[v].neighbors[i];
-        c[u].stack--;
+// TODO: Refatorar código (utilizar strucst e mais funções de auxilio)
+// Estrutura de lista de adjacência
+typedef struct lista_adjacencia{
+    uint tam;   // tamanho da lista de vizinhos
+    uint *vizinhos;     // lista de vizinhos
+    int ref_count;   // pilha para backtracking
+    uint grau;
+} lista_adjacencia;
+static void retira_vizinhos(uint v, lista_adjacencia *c){
+    for (uint i = 0; i < c[v].tam ; i++){
+        uint u = c[v].vizinhos[i];
+        c[u].ref_count--;
         c[u].grau--;
-        if (c[u].stack == 0)
-            c_uns_count--;
     }
-    return c_uns_count;
 }
 
 // Para todo vértice em C verifica se é vizinho de v e decrementa o grau
 // se grau > 0 então i está no grafo
-static uint adiciona_vizinhos(uint v, lista_adjacencia *c, uint c_uns_count){
-    for (uint i = 0; i < c[v].size; i++){
-        uint u = c[v].neighbors[i];
-        c[u].stack++;
+static void adiciona_vizinhos(uint v, lista_adjacencia *c){
+    for (uint i = 0; i < c[v].tam; i++){
+        uint u = c[v].vizinhos[i];
+        c[u].ref_count++;
         c[u].grau++;
-        if (c[u].stack == 1)
-            c_uns_count++;
     }
-    return c_uns_count;
 }
 
 // Retorna primeiro vertice que está no grafo
 static int get_avalible_vert_primeiro(uint n, lista_adjacencia *c, uint *res){
     for (uint i = 0; i < n; i++){
-        if (c[i].stack == 1){
+        if (c[i].ref_count == 1){
             *res = i;
             return 1;
         }
@@ -268,47 +261,35 @@ static int get_avalible_vert_primeiro(uint n, lista_adjacencia *c, uint *res){
 // Retorna vertice de menor grau que está no grafo
 static int get_avalible_vert_menor_grau(uint n, lista_adjacencia *c, uint *res){
     // Nenhum vertice tem como ter grau maior que n (numero de vertices)
-    int menor_grau = n+1;
+    uint menor_grau = n+1;
     for (uint i = 0; i < n; i++){
-        if (c[i].stack == 1 && c[i].grau < menor_grau){
+        if (c[i].ref_count == 1 && c[i].grau < menor_grau){
             menor_grau = c[i].grau;
             *res = i;
         }
     }
     return menor_grau != n+1;
 }
-// Retorna vertice de maior grau que está no grafo
-static int get_avalible_vert_maior_grau(uint n, lista_adjacencia *c, uint *res){
-    // Nenhum vertice tem como ter grau maior que n (numero de vertices)
-    int maior_grau = -1;
-    for (uint i = 0; i < n; i++){
-        if (c[i].stack == 1 && c[i].grau > maior_grau){
-            maior_grau = c[i].grau;
-            *res = i;
-        }
-    }
-    return maior_grau != -1;
-}
 
-static int grau2(lista_adjacencia *c, uint v){
-    int res = 0;
-    for (uint i = 0; i < c[v].size; i++)
-        res += c[c[v].neighbors[i]].grau;
+static uint grau2(lista_adjacencia *c, uint v){
+    uint res = 0;
+    for (uint i = 0; i < c[v].tam; i++)
+        res += c[c[v].vizinhos[i]].grau;
    return res; 
 }
 
-static int grau3(lista_adjacencia *c, uint n, uint v){
-    int res = 0;
+static uint grau3(lista_adjacencia *c, uint n, uint v){
+    uint res = 0;
     // Vetor que diz se essa casa pode ou não ser considerada na contagem
     int *proibido = calloc(n, sizeof(int));
     // Preenche com os vizinhos de v
-    for (uint i = 0; i < c[v].size; i++)
-        proibido[c[v].neighbors[i]] = 1;
-    for (uint i = 0; i < c[v].size; i++){
-        uint u = c[v].neighbors[i];
-        for (uint j = 0; j < c[u].size; j++){
-            if (!proibido[c[u].neighbors[j]])
-                res += c[c[u].neighbors[j]].grau;
+    for (uint i = 0; i < c[v].tam; i++)
+        proibido[c[v].vizinhos[i]] = 1;
+    for (uint i = 0; i < c[v].tam; i++){
+        uint u = c[v].vizinhos[i];
+        for (uint j = 0; j < c[u].tam; j++){
+            if (!proibido[c[u].vizinhos[j]])
+                res += c[c[u].vizinhos[j]].grau;
         }
     }
     free(proibido);
@@ -320,10 +301,10 @@ static int grau3(lista_adjacencia *c, uint n, uint v){
 //      que não incluem os vizinhos de v
 static int get_avalible_vert_melhor_deg_3(uint n, lista_adjacencia *c, uint *res){
     // Nenhum vertice tem como ter grau maior que n (numero de vertices)
-    int menor_grau = n+1;
-    int grau2_a, grau2_b;
+    uint menor_grau = n+1;
+    uint grau2_a, grau2_b;
     for (uint i = 0; i < n; i++){
-        if (c[i].stack == 1){
+        if (c[i].ref_count == 1){
             // Se for grau menor ou
             // se grau for igual escolhe o que tem mairo grau2
             if ((c[i].grau < menor_grau) ||
@@ -341,9 +322,9 @@ static int get_avalible_vert_melhor_deg_3(uint n, lista_adjacencia *c, uint *res
 //  grau2 é a soma dos graus do vizinhos de v
 static int get_avalible_vert_melhor_deg_2(uint n, lista_adjacencia *c, uint *res){
     // Nenhum vertice tem como ter grau maior que n (numero de vertices)
-    int menor_grau = n+1;
+    uint menor_grau = n+1;
     for (uint i = 0; i < n; i++){
-        if (c[i].stack == 1){
+        if (c[i].ref_count == 1){
             // Se for grau menor ou
             // se grau for igual escolhe o que tem mairo grau2
             if ((c[i].grau < menor_grau) ||
@@ -358,8 +339,8 @@ static int get_avalible_vert_melhor_deg_2(uint n, lista_adjacencia *c, uint *res
 
 static void libera_lista(lista_adjacencia* lista, uint t){
     for(uint i = 0; i < t; i++)
-        if (lista[i].neighbors != NULL)
-            free(lista[i].neighbors);
+        if (lista[i].vizinhos != NULL)
+            free(lista[i].vizinhos);
     free(lista);
 }
 
@@ -371,37 +352,57 @@ inline static uint get_row(uint v_id, uint n){
 }
 
 static lista_adjacencia *adiciona_vizinhos_lista(lista_adjacencia* lista, uint i, uint j){
-    lista[i].neighbors[lista[i].size++] = j;
-    lista[j].neighbors[lista[j].size++] = i;
+    lista[i].vizinhos[lista[i].tam++] = j;
+    lista[j].vizinhos[lista[j].tam++] = i;
 
     return lista;
 }
 
+// função que calcula o número de linhas restantes através do grafo
+static uint linhas_restantes(lista_adjacencia *c, uint n){
+    uint *linha_ocupada = calloc(n, sizeof(uint));
+    uint count = 0;
+    for (uint i = 0; i < n*n; i++){
+        if (c[i].ref_count == 1){
+            uint row = get_row(i, n);
+            if (!linha_ocupada[row]){
+                linha_ocupada[row] = 1;
+                count++;
+            }
+        }
+    }
+
+    free(linha_ocupada);
+    return count;
+}
+// função que calcula o número de linhas restantes através do grafo
+static uint colunas_restantes(lista_adjacencia *c, uint n){
+    uint *coluna_ocupada = calloc(n, sizeof(uint));
+    uint count = 0;
+    for (uint i = 0; i < n*n; i++){
+        if (c[i].ref_count == 1){
+            uint col = get_col(i, n);
+            if (!coluna_ocupada[col]){
+                coluna_ocupada[col] = 1;
+                count++;
+            }
+        }
+    }
+
+    free(coluna_ocupada);
+    return count;
+}
+
 // Variavel para testar heuristicas, ALTERAR para testar novas
 int (*get_avalible_vert)(uint, lista_adjacencia *, uint *) = get_avalible_vert_melhor_deg_2;
-static int rainhas_ci_(uint n, uint t, uint I_sz, uint *I, lista_adjacencia *c, uint c_uns_count){
+static int rainhas_ci_recursivo(uint n, uint t, uint I_sz, uint *I, lista_adjacencia *c){
     if (I_sz == n){
         memcpy(maior_sol, I, n*sizeof(uint));
         maior_sol_sz = I_sz;
-#ifdef DEBUG
-        printf("in 0 size(%d): ", I_sz);
-        for (uint i = 0; i < n; i++)
-            printf("%d ", I[i]);
-        printf("\n");
-#endif
         return 1;
     }
-    if (I_sz + c_uns_count < maior_sol_sz){
-        if (I_sz > maior_sol_sz){
-            memcpy(maior_sol, I, n*sizeof(uint));
-            maior_sol_sz = I_sz;
-#ifdef DEBUG
-            printf("in 1 size(%d): ", I_sz);
-            for (uint i = 0; i < n; i++)
-                printf("%d ", I[i]);
-            printf("\n");
-#endif
-        }
+    // Se não tiver linhas ou colunas suficientes para passar da maior solução
+    if (I_sz + MIN(colunas_restantes(c, n), linhas_restantes(c, n)) <= maior_sol_sz){
         return 0;
     }
     // Remove vertice v de C
@@ -411,27 +412,20 @@ static int rainhas_ci_(uint n, uint t, uint I_sz, uint *I, lista_adjacencia *c, 
         if (I_sz > maior_sol_sz){
             memcpy(maior_sol, I, n*sizeof(uint));
             maior_sol_sz = I_sz;
-#ifdef DEBUG
-            printf("in 2 size(%d): ", I_sz);
-            for (uint i = 0; i < n; i++)
-                printf("%d ", I[i]);
-            printf("\n");
-#endif
         }
         return 0;
     }
     // Marca vertice como retirado
-    c[v].stack = 0;
-    c_uns_count--;
+    c[v].ref_count = 0;
 
     // Adiciona v em I
     I[I_sz++] = v;
 
     // Remove vizinhos de v de C
-    c_uns_count = retira_vizinhos(v, c, c_uns_count);
+    retira_vizinhos(v, c);
 
     // Chama recursivamente
-    if (rainhas_ci_(n, t, I_sz, I, c, c_uns_count))
+    if (rainhas_ci_recursivo(n, t, I_sz, I, c))
         return 1;
 
     // ------------------- Backtracking -------------------
@@ -439,17 +433,17 @@ static int rainhas_ci_(uint n, uint t, uint I_sz, uint *I, lista_adjacencia *c, 
     I[I_sz--] = 0;
 
     // Adiciona vizinhos de v em C
-    c_uns_count = adiciona_vizinhos(v, c, c_uns_count);
+    adiciona_vizinhos(v, c);
 
     // Chama recursivamente
-    int res = rainhas_ci_(n, t, I_sz, I, c, c_uns_count);
+    int res = rainhas_ci_recursivo(n, t, I_sz, I, c);
     // Volta o vertice retirado, pois na chamda anterior ele não está retirado
-    c[v].stack = 1;
+    c[v].ref_count = 1;
     return res;
     // ------------------- Backtracking -------------------
 }
 
-static lista_adjacencia *cria_lista_adjacecia(uint n, uint k, casa *c, uint *c_uns_count){
+static lista_adjacencia *cria_lista_adjacecia(uint n, uint k, casa *c){
     uint size_list = n*n;
 
     // Matriz para dizer se casa é proibida ou não
@@ -465,11 +459,10 @@ static lista_adjacencia *cria_lista_adjacecia(uint n, uint k, casa *c, uint *c_u
     for (uint i = 0; i < size_list; i++){
         if (mat[i]) // Se casa é proibida, ignora
             continue;
-        lista[i].stack = 1;
-        *c_uns_count += 1;
+        lista[i].ref_count = 1;
 
-        if (lista[i].neighbors == NULL)
-            lista[i].neighbors = calloc(4*n, sizeof(uint));
+        if (lista[i].vizinhos == NULL)
+            lista[i].vizinhos = calloc(4*n, sizeof(uint));
 
         uint row_i = get_row(i, n); 
         uint col_i = get_col(i, n);
@@ -479,8 +472,8 @@ static lista_adjacencia *cria_lista_adjacecia(uint n, uint k, casa *c, uint *c_u
             if (mat[j])
                 continue;
             
-            if (lista[j].neighbors == NULL)
-                lista[j].neighbors = calloc(4*n, sizeof(uint));
+            if (lista[j].vizinhos == NULL)
+                lista[j].vizinhos = calloc(4*n, sizeof(uint));
 
             // verifica se casa i é vizinha de casa j
             // 1. Verifica linha
@@ -492,7 +485,7 @@ static lista_adjacencia *cria_lista_adjacecia(uint n, uint k, casa *c, uint *c_u
             }
         }
         // Grau é quantos vizinhos tem
-        lista[i].grau = lista[i].size;
+        lista[i].grau = lista[i].tam;
     }
 
     free(mat);
@@ -500,19 +493,17 @@ static lista_adjacencia *cria_lista_adjacecia(uint n, uint k, casa *c, uint *c_u
 }
 
 unsigned int *rainhas_ci(unsigned int n, unsigned int k, casa *c, unsigned int *r) {
-    //int *mat_adj = cria_matriz_adjacencia(n, k, c);
-    uint c_uns_count = 0;
-    lista_adjacencia *lista = cria_lista_adjacecia(n, k, c, &c_uns_count);
+    lista_adjacencia *lista = cria_lista_adjacecia(n, k, c);
     //imrpime a lista
     // for (uint i = 0; i < n*n; i++){
     //     printf("%d: ", i);
-    //     for (uint j = 0; j < lista[i].size; j++){
-    //         printf("%d ", lista[i].neighbors[j]);
+    //     for (uint j = 0; j < lista[i].tam; j++){
+    //         printf("%d ", lista[i].vizinhos[j]);
     //     }
     //     printf("\n");
     // }
     /* for (uint i = 0; i < n*n; i++){ */
-    /*     printf("%d: %d\n", i, lista[i].size); */
+    /*     printf("%d: %d\n", i, lista[i].tam); */
     /* } */
 
     uint t = n*n;
@@ -523,7 +514,7 @@ unsigned int *rainhas_ci(unsigned int n, unsigned int k, casa *c, unsigned int *
     maior_sol = calloc(n, (sizeof (uint)));
     maior_sol_sz = 0;
 
-    if (!rainhas_ci_(n, t, I_sz, I, lista, c_uns_count))
+    if (!rainhas_ci_recursivo(n, t, I_sz, I, lista))
         memcpy(I, maior_sol, n*sizeof(uint));
 
     for (uint i = 0; i < n; i++){

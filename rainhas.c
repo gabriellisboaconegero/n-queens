@@ -24,7 +24,7 @@ static uint *maior_sol;
 //
 // devolve r
 
-typedef struct backtraking_params {
+typedef struct backtraking_state {
     // n: Tamanho do lado do tabuleiro
     // cols: vetor booleano que indica
     //      cols[i] == 1: Tem rainha nessa coluna
@@ -53,10 +53,10 @@ typedef struct backtraking_params {
     uint *sol;
     uint sol_sz;
     int *linhas_usadas;
-} backtraking_params;
+} backtraking_state;
 
 // Calcula quantas colunas estão livres para colocar uma rainha
-static uint col_restantes(backtraking_params *bt, uint row){
+static uint col_restantes(backtraking_state *bt, uint row){
     uint n = bt->n;
     uint count = 0;
     for (uint col = 0; col < n; col++){
@@ -72,7 +72,7 @@ static uint col_restantes(backtraking_params *bt, uint row){
 
 // Pega próxima linha com menor número de casas livres para colocar rainhas
 // OBS: Pode pegar linhas totalmente proibidas, está correto
-static uint prox_linha(backtraking_params *bt){
+static uint prox_linha(backtraking_state *bt){
     uint n = bt->n;
     uint menor = n+1;
     uint melhor = n+1;
@@ -100,7 +100,7 @@ static uint quantidade_linhas_usadas(uint n, int *linhas_usadas){
 // Retorna se casa não está livre para colocar rainha
 //     1: Se casa (row, col) não está livre
 //     0: c.c
-static inline int eh_casa_livre(backtraking_params *bt, uint row, uint col){
+static inline int eh_casa_livre(backtraking_state *bt, uint row, uint col){
     // 1. Se for uma casa proibida
     // 2. Se tiver uma rainha na coluna
     // 3. Se tiver uma rainha na diagonal principal
@@ -113,7 +113,7 @@ static inline int eh_casa_livre(backtraking_params *bt, uint row, uint col){
 }
 
 // Marca que rainha foi colocada na casa (row, col)
-static inline void coloca_rainha(backtraking_params *bt, uint row, uint col){
+static inline void coloca_rainha(backtraking_state *bt, uint row, uint col){
     uint n = bt->n;
     bt->sol[row] = col+1;
     bt->cols[col] = bt->diags2[row+col] = bt->diags1[row-col+n-1] = 1;
@@ -122,7 +122,7 @@ static inline void coloca_rainha(backtraking_params *bt, uint row, uint col){
 }
 
 // Desmarca que rainha foi colocada na casa (row, col)
-static inline void retira_rainha(backtraking_params *bt, uint row, uint col){
+static inline void retira_rainha(backtraking_state *bt, uint row, uint col){
     uint n = bt->n;
     bt->sol_sz--;
     bt->linhas_usadas[row] = 0;
@@ -130,7 +130,7 @@ static inline void retira_rainha(backtraking_params *bt, uint row, uint col){
     bt->sol[row] = 0;
 }
 
-static int rainhas_bt_recursivo(backtraking_params *bt){
+static int rainhas_bt_recursivo(backtraking_state *bt){
     // verifica se eh a melhor solucao ate o momento (sol_sz se refere a solucao criada na recursao anterior, 
     // por isso a comparacao feita logo no inicio).
     uint n = bt->n;
@@ -177,7 +177,7 @@ static int rainhas_bt_recursivo(backtraking_params *bt){
 }
 
 unsigned int *rainhas_bt(unsigned int n, unsigned int k, casa *c, unsigned int *r){
-    backtraking_params bt;
+    backtraking_state bt;
 
     bt.n      = n;
     bt.sol_sz = 0;
